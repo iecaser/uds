@@ -4,7 +4,7 @@ model for MNIST, a VGG model for CIFAR and a multilayer perceptron model for dic
 """
 
 import numpy as np
-
+import keras
 from keras.callbacks import Callback
 from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, Flatten, Activation, Input, UpSampling2D
@@ -248,6 +248,21 @@ def get_autoencoder_model(input_shape, labels=10):
     return autoencoder
 
 
+def get_text_cnn(vocab_size=5000, max_length=128):
+    model = keras.Sequential()
+    model.add(keras.layers.Embedding(vocab_size, 64, input_length=max_length))
+    model.add(keras.layers.Conv1D(64, 3, activation='relu'))
+    model.add(keras.layers.Conv1D(64, 3, activation='relu'))
+    model.add(keras.layers.AveragePooling1D(4))
+    model.add(keras.layers.Flatten())
+    model.add(keras.layers.Dense(128, activation='relu'))
+    model.add(keras.layers.Dropout(0.5))
+    model.add(keras.layers.Dense(64, activation='relu'))
+    model.add(keras.layers.Dense(1, activation='sigmoid'))
+    # model.summary()
+    return model
+
+
 def train_discriminative_model(labeled, unlabeled, input_shape, gpu=1):
     """
     A function that trains and returns a discriminative model on the labeled and unlabaled data.
@@ -442,5 +457,48 @@ def train_cifar100_model(X_train, Y_train, X_validation, Y_validation, checkpoin
                   callbacks=callbacks,
                   verbose=2)
 
+        model.load_weights(checkpoint_path)
+        return model
+
+
+def train_dd_model(X_train, Y_train, X_validation, Y_validation, checkpoint_path, gpu=1):
+    """
+    A function that trains and returns a VGG model on the labeled CIFAR-100 data.
+    """
+
+    model = get_text_cnn(vocab_size=5000, max_length=128)
+    model.compile(optimizer='adam',
+                  loss='binary_crossentropy',
+                  metrics=['accuracy'])
+    callbacks = [DelayedModelCheckpoint(filepath=checkpoint_path, verbose=0, weights=True),
+                 keras.callbacks.EarlyStopping(patience=30)]
+
+    if gpu > 1:
+        gpu_model = ModelMGPU(model, gpus=gpu)
+        gpu_model.compile(loss='binary_crossentropy',
+                          optimizer='adam',
+                          metrics=['accuracy'])
+        gpu_model.fit(X_train, Y_train,
+                      epochs=1000,
+                      batch_size=16,
+                      shuffle=True,
+                      validation_data=(X_validation, Y_validation),
+                      callbacks=callbacks,
+                      verbose=1)
+        del gpu_model
+        del model
+
+        model = get_text_cnn(vocab_size=5000, max_length=128)
+        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+        model.load_weights(checkpoint_path)
+        return model
+    else:
+        model.fit(X_train, Y_train,
+                  epochs=1000,
+                  batch_size=16,
+                  shuffle=True,
+                  validation_data=(X_validation, Y_validation),
+                  callbacks=callbacks,
+                  verbose=1)
         model.load_weights(checkpoint_path)
         return model

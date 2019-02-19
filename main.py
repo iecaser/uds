@@ -7,12 +7,17 @@ import pickle
 import os
 import sys
 import argparse
+import jieba
+import keras
 from keras.utils import to_categorical
 from sklearn.datasets import load_boston, load_diabetes
 from tqdm import tqdm
 from models import *
 from query_methods import *
+import pandas as pd
 import tensorflow as tf
+from sklearn.externals import joblib
+import gc
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
@@ -20,14 +25,14 @@ def parse_input():
     p = argparse.ArgumentParser()
     p.add_argument('experiment_index', type=int, help="index of current experiment")
     p.add_argument('data_type', type=str, choices={
-                   'mnist', 'cifar10', 'cifar100'}, help="data type (mnist/cifar10/cifar100)")
+                   'mnist', 'cifar10', 'cifar100', 'dd'}, help="data type (mnist/cifar10/cifar100/dd)")
     p.add_argument('batch_size', type=int, help="active learning batch size")
     p.add_argument('initial_size', type=int, help="initial sample size for active learning")
     p.add_argument('iterations', type=int, help="number of active learning batches to sample")
     p.add_argument('method', type=str,
-                   choices={'Random', 'UncertaintyDensity', 'CoreSet', 'CoreSetMIP', 'Discriminative', 'DiscriminativeLearned', 'DiscriminativeAE',
+                   choices={'Random', 'DualDensity', 'CoreSet', 'CoreSetMIP', 'Discriminative', 'DiscriminativeLearned', 'DiscriminativeAE',
                             'DiscriminativeStochastic', 'Uncertainty', 'Bayesian', 'UncertaintyEntropy', 'BayesianEntropy', 'EGL', 'Adversarial'},
-                   help="sampling method ('Random','CoreSet','CoreSetMIP','Discriminative','DiscriminativeLearned','DiscriminativeAE','DiscriminativeStochastic','Uncertainty','Bayesian','UncertaintyEntropy','BayesianEntropy','EGL','Adversarial')")
+                   help="sampling method ('Random','DualDensity,'CoreSet','CoreSetMIP','Discriminative','DiscriminativeLearned','DiscriminativeAE','DiscriminativeStochastic','Uncertainty','Bayesian','UncertaintyEntropy','BayesianEntropy','EGL','Adversarial')")
     p.add_argument('experiment_folder', type=str,
                    help="folder where the experiment results will be saved")
     p.add_argument('--method2', '-method2', type=str,
@@ -160,6 +165,11 @@ def load_cifar_100(label_mode='fine'):
     return (x_train, y_train), (x_test, y_test)
 
 
+def load_dd():
+    filepath = '/export/zxf/workspace/jdd/data/output/data.seq'
+    return joblib.load(filepath)
+
+
 def evaluate_sample(training_function, X_train, Y_train, X_test, Y_test, checkpoint_path):
     """
     A function that accepts a labeled-unlabeled data split and trains the relevant model on the labeled data, returning
@@ -218,10 +228,19 @@ if __name__ == '__main__':
         else:
             input_shape = (3, 32, 32)
         evaluation_function = train_cifar100_model
+    if args.data_type == 'dd':
+        (X_train, Y_train), (X_test, Y_test) = load_dd()
+        num_labels = 1
+        if K.image_data_format() == 'channels_last':
+            input_shape = (32, 32, 3)
+        else:
+            input_shape = (3, 32, 32)
+        evaluation_function = train_dd_model
 
     # make categorical:
-    Y_train = to_categorical(Y_train)
-    Y_test = to_categorical(Y_test)
+    if num_labels > 1:
+        Y_train = to_categorical(Y_train)
+        Y_test = to_categorical(Y_test)
 
     # load the indices:
     if args.initial_idx_path is not None:
@@ -351,7 +370,7 @@ if __name__ == '__main__':
     query_method.update_model(model)
     accuracies.append(acc)
     # print("Test Accuracy Is " + str(acc))
-    for i in (range(args.iterations)):
+    for i in tqdm(range(args.iterations)):
 
         # get the new indices from the algorithm
         old_labeled = np.copy(labeled_idx)
@@ -368,6 +387,8 @@ if __name__ == '__main__':
         queries.append(new_idx)
 
         # evaluate the new sample:
+        del model
+        gc.collect()
         acc, model = evaluate_sample(
             evaluation_function, X_train[labeled_idx], Y_train[labeled_idx], X_test, Y_test, checkpoint_path)
         query_method.update_model(model)

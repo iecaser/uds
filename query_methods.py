@@ -106,6 +106,76 @@ class UncertaintyEntropySampling(QueryMethod):
         return np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
 
 
+class DualDensity(QueryMethod):
+    """By zxf"""
+
+    def __init__(self, model, input_shape, num_labels, gpu):
+        super().__init__(model, input_shape, num_labels, gpu)
+
+    def query(self, X_train, Y_train, labeled_idx, amount):
+        # part 1: train density
+        unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
+        X = X_train[unlabeled_idx, :]
+        embedding_model = Model(inputs=self.model.input,
+                                outputs=self.model.get_layer('softmax').input)
+        representation_org = embedding_model.predict(
+            X, batch_size=128).reshape((X.shape[0], -1))
+
+        # part 2: density
+        # pca
+        pca = PCA(n_components=10)
+        representation = pca.fit_transform(representation_org)
+        # normalize
+        representation1 = normalize(representation, axis=0)
+        import pdb
+        pdb.set_trace()
+
+        print('representation shape: ', representation.shape)
+        del embedding_model
+        gc.collect()
+        # representation = predictions.reshape((X.shape[0], -1, 1))
+
+        n_features = representation.shape[1]
+        bins = np.arange(0, 1+self.bin_size, self.bin_size)
+        n_bins = bins.shape[0]-1
+        index = np.digitize(representation, bins) - 1
+        index[index >= n_bins] = n_bins-1
+        index_bin = [[] for __ in range(n_bins**n_features)]
+        information_bin = copy.deepcopy(index_bin)
+        for i, idx in enumerate(index):
+            ravel_index = np.ravel_multi_index(idx, dims=tuple(
+                np.ones(n_features, dtype='int')*n_bins))[0]
+            index_bin[ravel_index].append(i)
+            information_bin[ravel_index].append(information[i])
+        information_index, information_val = [], []
+        for infob, idxb in zip(information_bin, index_bin):
+            idx, val = (0, 0) if len(infob) == 0 else max(zip(idxb, infob), key=lambda x: x[1])
+            information_index.append(idx)
+            information_val.append(val)
+        pdf = [len(idxb) for idxb in index_bin]
+        plt.figure()
+        plt.plot(pdf)
+        plt.savefig('pdf.png')
+        print('saved pdf.png')
+        choose_mat = np.multiply(information_val, pdf)
+        # choose
+        selected_indices = []
+        for i in range(amount):
+            which_bin = np.argmax(choose_mat)
+            which_index = information_index[which_bin]
+            selected_indices.append(which_index)
+            # udpate
+            pdf[which_bin] -= 1
+            information_bin[which_bin].remove(information[which_index])
+            index_bin[which_bin].remove(which_index)
+            information_index[which_bin], information_val[which_bin] = max(
+                zip(index_bin[which_bin], information_bin[which_bin]), key=lambda x: x[1])
+            choose_mat[which_bin] = pdf[which_bin]*information_val[which_bin]
+
+        labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
+        return labeled_idx
+
+
 class UncertaintyDensity(QueryMethod):
     """By zxf"""
 
