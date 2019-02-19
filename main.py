@@ -10,6 +10,7 @@ import argparse
 import jieba
 import keras
 from keras.utils import to_categorical
+from keras import backend as K
 from sklearn.datasets import load_boston, load_diabetes
 from tqdm import tqdm
 from models import *
@@ -387,6 +388,7 @@ if __name__ == '__main__':
         queries.append(new_idx)
 
         # evaluate the new sample:
+        K.clear_session()
         del model
         gc.collect()
         acc, model = evaluate_sample(
