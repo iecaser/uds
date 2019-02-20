@@ -256,6 +256,8 @@ if __name__ == '__main__':
     # set the first query method:
     if args.method == 'Random':
         method = RandomSampling
+    elif args.method == 'DualDensity':
+        method = DualDensity
     elif args.method == 'UncertaintyDensity':
         method = UncertaintyDensity
     elif args.method == 'CoreSet':
@@ -370,6 +372,7 @@ if __name__ == '__main__':
         evaluation_function, X_train[labeled_idx, :], Y_train[labeled_idx], X_test, Y_test, checkpoint_path)
     query_method.update_model(model)
     accuracies.append(acc)
+    tqdm.write("Test Accuracy Is " + str(acc))
     # print("Test Accuracy Is " + str(acc))
     for i in tqdm(range(args.iterations)):
 
@@ -395,6 +398,7 @@ if __name__ == '__main__':
             evaluation_function, X_train[labeled_idx], Y_train[labeled_idx], X_test, Y_test, checkpoint_path)
         query_method.update_model(model)
         accuracies.append(acc)
+        tqdm.write("Test Accuracy Is " + str(acc))
         # print("Test Accuracy Is " + str(acc))
 
     # save the results:

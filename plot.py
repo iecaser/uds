@@ -8,7 +8,7 @@ import numpy as np
 basepath = '/home/zxf/workspace/DiscriminativeActiveLearning/exp/'
 method = os.listdir(basepath)
 for mp in method:
-    filepath = glob.glob(os.path.join(basepath, mp, 'results/*100_1000_[0-9].pkl'))
+    filepath = glob.glob(os.path.join(basepath, mp, 'results/*mnist_100_1000_[0-9].pkl'))
     acc = []
     for fp in filepath:
         print(fp)

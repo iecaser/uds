@@ -470,8 +470,8 @@ def train_dd_model(X_train, Y_train, X_validation, Y_validation, checkpoint_path
     model.compile(optimizer='adam',
                   loss='binary_crossentropy',
                   metrics=['accuracy'])
-    callbacks = [DelayedModelCheckpoint(filepath=checkpoint_path, verbose=0, weights=True),
-                 keras.callbacks.EarlyStopping(patience=30)]
+    # callbacks = [DelayedModelCheckpoint(filepath=checkpoint_path, verbose=0, weights=True)]
+    callbacks = [keras.callbacks.EarlyStopping(patience=30)]
 
     if gpu > 1:
         gpu_model = ModelMGPU(model, gpus=gpu)
@@ -484,13 +484,12 @@ def train_dd_model(X_train, Y_train, X_validation, Y_validation, checkpoint_path
                       shuffle=True,
                       validation_data=(X_validation, Y_validation),
                       callbacks=callbacks,
-                      verbose=1)
-        del gpu_model
-        del model
-
-        model = get_text_cnn(vocab_size=5000, max_length=128)
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-        model.load_weights(checkpoint_path)
+                      verbose=0)
+        # del gpu_model
+        # del model
+        # model = get_text_cnn(vocab_size=5000, max_length=128)
+        # model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+        # model.load_weights(checkpoint_path)
         return model
     else:
         model.fit(X_train, Y_train,
@@ -499,6 +498,6 @@ def train_dd_model(X_train, Y_train, X_validation, Y_validation, checkpoint_path
                   shuffle=True,
                   validation_data=(X_validation, Y_validation),
                   callbacks=callbacks,
-                  verbose=1)
-        model.load_weights(checkpoint_path)
+                  verbose=0)
+        # model.load_weights(checkpoint_path)
         return model
