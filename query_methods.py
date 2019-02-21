@@ -20,6 +20,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import normalize
 from scipy.spatial.distance import cdist
 from tqdm import tqdm
+from loguru import logger
 
 
 def get_unlabeled_idx(X_train, labeled_idx):
@@ -125,21 +126,19 @@ class DualDensity(QueryMethod):
         U = embedding_model.predict(X_unlabeled, batch_size=128)
         del embedding_model
         gc.collect()
-        print('cal distance matrix...')
-        print('labeled data representation shape: ', L.shape)
-        print('unlabeled data representation shape: ', U.shape)
+        logger.info('cal distance matrix...')
+        logger.info('labeled data representation shape: ', L.shape)
+        logger.info('unlabeled data representation shape: ', U.shape)
         assert L.shape[1] == U.shape[1]
         LU = cdist(L, U)
         UU = cdist(U, U)
-        # LU = distance_matrix(L, U)
-        # UU = distance_matrix(U, U)
 
-        print('cal similarity...')
+        logger.info('cal similarity...')
         # labeled density
         sim_labeled = LU.min(axis=0)
         # unlabeled density
         dis_unlabeled = UU.mean(axis=0)
-        sim_unlabeled = 1 / dis_unlabeled
+        sim_unlabeled = 1 / (1 + dis_unlabeled)
         selected_indices = []
         N = UU.shape[0]
         for i in tqdm(range(amount)):
@@ -154,7 +153,7 @@ class DualDensity(QueryMethod):
             sim_labeled[sample_index] = 0
             dis_unlabeled = (dis_unlabeled * N - sample) / (N-1)
             # dis_unlabeled[a] = 9999
-            sim_unlabeled = 1 / (dis_unlabeled)
+            sim_unlabeled = 1 / (1 + dis_unlabeled)
             N -= 1
         labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
         return labeled_idx

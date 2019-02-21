@@ -18,7 +18,7 @@ print('cal similarity')
 sim_labeled = LU.min(axis=0)
 # unlabeled density
 dis_unlabeled = UU.mean(axis=0)
-sim_unlabeled = 1 / dis_unlabeled
+sim_unlabeled = 1 / (1+dis_unlabeled)
 sample_indices = []
 amount = 100
 N = UU.shape[0]
@@ -34,7 +34,7 @@ for i in tqdm(range(amout)):
     sim_labeled[sample_index] = 0
     dis_unlabeled = (dis_unlabeled * N - sample) / (N-1)
     # dis_unlabeled[a] = 9999
-    sim_unlabeled = 1 / (dis_unlabeled)
+    sim_unlabeled = 1 / (1+dis_unlabeled)
     N -= 1
 # print(sample_indices)
 # print(len(set(sample_indices)))

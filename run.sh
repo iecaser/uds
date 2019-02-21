@@ -1,5 +1,5 @@
 initial_size=100
-batch_size=100
+batch_size=1000
 iterations=20
 for idx in {0..9}
 do
@@ -12,8 +12,9 @@ do
     echo "------- CoreSet $idx... -------"
     python3 main.py $idx "mnist" $batch_size $initial_size $iterations "CoreSet" "/home/zxf/workspace/DiscriminativeActiveLearning/exp/CoreSet/"
 
-    echo "------- DiscriminativeLearned $idx... -------"
-    python3 main.py $idx "mnist" $batch_size $initial_size $iterations "DiscriminativeLearned" "/home/zxf/workspace/DiscriminativeActiveLearning/exp/DiscriminativeLearned/"
-    # echo "------- UncertaintyDensity $idx... -------"
-    # python3 main.py $idx "mnist" $batch_size $initial_size $iterations "UncertaintyDensity" "/home/zxf/workspace/DiscriminativeActiveLearning/exp/UncertaintyDensity/"
+    echo "------- DualDensity $idx... -------"
+    python3 main.py $idx "mnist" $batch_size $initial_size $iterations "DualDensity" "/home/zxf/workspace/DiscriminativeActiveLearning/exp/DualDensity/"
+
+    # echo "------- DiscriminativeLearned $idx... -------"
+    # python3 main.py $idx "mnist" $batch_size $initial_size $iterations "DiscriminativeLearned" "/home/zxf/workspace/DiscriminativeActiveLearning/exp/DiscriminativeLearned/"
 done
