@@ -1,5 +1,5 @@
 initial_size=100
-batch_size=1000
+batch_size=100
 iterations=20
 for idx in {0..9}
 do

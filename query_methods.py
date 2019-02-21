@@ -112,10 +112,12 @@ class UncertaintyEntropySampling(QueryMethod):
 class DualDensity(QueryMethod):
     """By zxf"""
 
-    def __init__(self, model, input_shape, num_labels, gpu):
+    def __init__(self, model, input_shape, num_labels, gpu, alpha=0.8):
         super().__init__(model, input_shape, num_labels, gpu)
+        self.alpha = alpha
 
     def query(self, X_train, Y_train, labeled_idx, amount):
+        epsilon = 0.00001
         # representation
         unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
         X_labeled = X_train[labeled_idx, :]
@@ -138,12 +140,12 @@ class DualDensity(QueryMethod):
         sim_labeled = LU.min(axis=0)
         # unlabeled density
         dis_unlabeled = UU.mean(axis=0)
-        sim_unlabeled = 1 / (1 + dis_unlabeled)
+        sim_unlabeled = 1 / (epsilon + dis_unlabeled)
         selected_indices = []
         N = UU.shape[0]
         for i in tqdm(range(amount)):
             # sample
-            sim = sim_labeled * sim_unlabeled
+            sim = (sim_labeled)**self.alpha * sim_unlabeled
             sample_index = np.argmax(sim)
             selected_indices.append(sample_index)
 
@@ -153,7 +155,7 @@ class DualDensity(QueryMethod):
             sim_labeled[sample_index] = 0
             dis_unlabeled = (dis_unlabeled * N - sample) / (N-1)
             # dis_unlabeled[a] = 9999
-            sim_unlabeled = 1 / (1 + dis_unlabeled)
+            sim_unlabeled = 1 / (epsilon + dis_unlabeled)
             N -= 1
         labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
         return labeled_idx
