@@ -11,13 +11,14 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('dataset', 'mnist', 'Specified dataset')
 flags.DEFINE_integer('init', 100, 'initial size')
+flags.DEFINE_integer('batch', 100, 'batch size')
 
 def main(argv):
     basepath = '/home/zxf/workspace/DiscriminativeActiveLearning/exp/'
     methods = os.listdir(basepath)
     valid_methods = []
     for mp in methods:
-        filepath = glob.glob(os.path.join(basepath, mp, 'results/*{}_{}_1000_[0-9].pkl'.format(FLAGS.dataset,FLAGS.init)))
+        filepath = glob.glob(os.path.join(basepath, mp, 'results/*{}_{}_{}_[0-9].pkl'.format(FLAGS.dataset,FLAGS.init, FLAGS.batch)))
         acc = []
         for fp in filepath:
             print(fp)
@@ -29,7 +30,7 @@ def main(argv):
             acc = np.array(acc).mean(axis=0)
             plt.plot(acc)
     plt.legend(valid_methods)
-    plt.savefig('{}_{}_1000.png'.format(FLAGS.dataset, FLAGS.init))
+    plt.savefig('{}_{}_{}.png'.format(FLAGS.dataset, FLAGS.init, FLAGS.batch))
 if __name__ == '__main__':
     app.run(main)
 

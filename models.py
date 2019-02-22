@@ -14,6 +14,7 @@ from keras import regularizers
 from keras import backend as K
 from keras.models import load_model
 from keras.utils import to_categorical, multi_gpu_model
+from keras import layers
 
 
 class DiscriminativeEarlyStopping(Callback):
@@ -249,16 +250,30 @@ def get_autoencoder_model(input_shape, labels=10):
 
 
 def get_text_cnn(vocab_size=5000, max_length=128):
-    model = keras.Sequential()
-    model.add(keras.layers.Embedding(vocab_size, 64, input_length=max_length))
-    model.add(keras.layers.Conv1D(64, 3, activation='relu'))
-    model.add(keras.layers.Conv1D(64, 3, activation='relu'))
-    model.add(keras.layers.AveragePooling1D(4))
-    model.add(keras.layers.Flatten())
-    model.add(keras.layers.Dense(128, activation='relu'))
-    model.add(keras.layers.Dropout(0.5))
-    model.add(keras.layers.Dense(64, activation='relu'))
-    model.add(keras.layers.Dense(1, activation='sigmoid'))
+    vocab_size = 10000
+    embedding_dim = 128
+    sequence_length = 128
+    num_filters = 256
+    filter_sizes = [3, 4, 5]
+    inputs = layers.Input(shape=(sequence_length,), dtype='int32')
+    embedding = layers.Embedding(
+        input_dim=vocab_size, output_dim=embedding_dim, input_length=sequence_length)(inputs)
+    reshape = layers.Reshape(target_shape=(sequence_length, embedding_dim, 1))(embedding)
+    convs = [layers.Conv2D(filters=num_filters,
+                           kernel_size=(filter_size, embedding_dim),
+                           padding='valid',
+                           activation='relu')(reshape) for filter_size in filter_sizes]
+    maxpools = [layers.MaxPool2D(pool_size=(sequence_length - filter_size + 1, 1),
+                                 strides=(1, 1),
+                                 padding='valid')(conv) for filter_size, conv in zip(filter_sizes, convs)]
+    concatenate = layers.Concatenate(axis=1)(maxpools)
+    flatten = layers.Flatten()(concatenate)
+    dp1 = layers.Dropout(0.5)(flatten)
+    fc = layers.Dense(units=128, activation='relu')(dp1)
+    dp2 = layers.Dropout(0.5)(fc)
+    outputs = layers.Dense(units=1, activation='sigmoid')(dp2)
+    model = keras.Model(inputs=inputs, outputs=outputs)
+    # model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     # model.summary()
     return model
 
@@ -467,11 +482,8 @@ def train_dd_model(X_train, Y_train, X_validation, Y_validation, checkpoint_path
     """
 
     model = get_text_cnn(vocab_size=5000, max_length=128)
-    model.compile(optimizer='adam',
-                  loss='binary_crossentropy',
-                  metrics=['accuracy'])
-    # callbacks = [DelayedModelCheckpoint(filepath=checkpoint_path, verbose=0, weights=True)]
-    callbacks = [keras.callbacks.EarlyStopping(patience=30)]
+    callbacks = [DelayedModelCheckpoint(filepath=checkpoint_path, verbose=0, weights=True)]
+    # callbacks = [keras.callbacks.EarlyStopping(patience=30)]
 
     if gpu > 1:
         gpu_model = ModelMGPU(model, gpus=gpu)
@@ -480,24 +492,24 @@ def train_dd_model(X_train, Y_train, X_validation, Y_validation, checkpoint_path
                           metrics=['accuracy'])
         gpu_model.fit(X_train, Y_train,
                       epochs=1000,
-                      batch_size=16,
+                      batch_size=256,
                       shuffle=True,
                       validation_data=(X_validation, Y_validation),
                       callbacks=callbacks,
                       verbose=0)
-        # del gpu_model
-        # del model
-        # model = get_text_cnn(vocab_size=5000, max_length=128)
-        # model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-        # model.load_weights(checkpoint_path)
+        del gpu_model
+        del model
+        model = get_text_cnn(vocab_size=5000, max_length=128)
+        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+        model.load_weights(checkpoint_path)
         return model
     else:
         model.fit(X_train, Y_train,
                   epochs=1000,
-                  batch_size=16,
+                  batch_size=256,
                   shuffle=True,
                   validation_data=(X_validation, Y_validation),
                   callbacks=callbacks,
                   verbose=0)
-        # model.load_weights(checkpoint_path)
+        model.load_weights(checkpoint_path)
         return model

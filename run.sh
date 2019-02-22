@@ -1,6 +1,6 @@
-initial_size=100
-batch_size=100
-iterations=20
+initial_size=1000
+batch_size=5000
+iterations=4
 for idx in {0..9}
 do
     echo "------- Random $idx... -------"
@@ -18,3 +18,4 @@ do
     # echo "------- DiscriminativeLearned $idx... -------"
     # python3 main.py $idx "mnist" $batch_size $initial_size $iterations "DiscriminativeLearned" "/home/zxf/workspace/DiscriminativeActiveLearning/exp/DiscriminativeLearned/"
 done
+python3 plot.py --dataset mnist --init $initial_size --batch $batch_size
