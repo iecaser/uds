@@ -123,15 +123,17 @@ class DualDensity(QueryMethod):
         X_labeled = X_train[labeled_idx, :]
         X_unlabeled = X_train[unlabeled_idx, :]
         embedding_model = Model(inputs=self.model.input,
-                                outputs=self.model.get_layer('softmax').input)
+                                outputs=self.model.get_layer('coding').output)
         L = embedding_model.predict(X_labeled, batch_size=128)
         U = embedding_model.predict(X_unlabeled, batch_size=128)
+        logger.info('labeled data representation shape: {}'.format(L.shape))
+        logger.info('unlabeled data representation shape: {}'.format(U.shape))
+        assert L.shape[1] == U.shape[1]
         del embedding_model
         gc.collect()
+        K.clear_session()
+
         logger.info('cal distance matrix...')
-        logger.info('labeled data representation shape: ', L.shape)
-        logger.info('unlabeled data representation shape: ', U.shape)
-        assert L.shape[1] == U.shape[1]
         LU = cdist(L, U)
         UU = cdist(U, U)
 
@@ -164,73 +166,53 @@ class DualDensity(QueryMethod):
 class UncertaintyDensity(QueryMethod):
     """By zxf"""
 
-    def __init__(self, model, input_shape, num_labels, gpu, bin_size=0.2):
+    def __init__(self, model, input_shape, num_labels, gpu, alpha=0.8):
         super().__init__(model, input_shape, num_labels, gpu)
-        self.bin_size = bin_size
+        self.alpha = alpha
 
     def query(self, X_train, Y_train, labeled_idx, amount):
-        # part 1: uncertainty
+        epsilon = 0.00001
+        # representation
         unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
-        X = X_train[unlabeled_idx, :]
-        predictions = self.model.predict(X)
-        information = -np.sum(predictions * np.log(predictions + 1e-10), axis=1)
-        print(information)
-
-        # part 2: density
+        X_labeled = X_train[labeled_idx, :]
+        X_unlabeled = X_train[unlabeled_idx, :]
         embedding_model = Model(inputs=self.model.input,
-                                outputs=self.model.get_layer('softmax').input)
-        representation_org = embedding_model.predict(
-            X, batch_size=128).reshape((X.shape[0], -1))
-        # pca
-        pca = PCA(n_components=10)
-        representation = pca.fit_transform(representation_org)
-        # normalize
-        representation1 = normalize(representation, axis=0)
-        import pdb
-        pdb.set_trace()
-
-        print('representation shape: ', representation.shape)
+                                outputs=self.model.get_layer('coding').output)
+        L = embedding_model.predict(X_labeled, batch_size=128)
+        U = embedding_model.predict(X_unlabeled, batch_size=128)
+        logger.info('labeled data representation shape: {}'.format(L.shape))
+        logger.info('unlabeled data representation shape: {}'.format(U.shape))
+        assert L.shape[1] == U.shape[1]
         del embedding_model
         gc.collect()
-        # representation = predictions.reshape((X.shape[0], -1, 1))
+        K.clear_session()
 
-        n_features = representation.shape[1]
-        bins = np.arange(0, 1+self.bin_size, self.bin_size)
-        n_bins = bins.shape[0]-1
-        index = np.digitize(representation, bins) - 1
-        index[index >= n_bins] = n_bins-1
-        index_bin = [[] for __ in range(n_bins**n_features)]
-        information_bin = copy.deepcopy(index_bin)
-        for i, idx in enumerate(index):
-            ravel_index = np.ravel_multi_index(idx, dims=tuple(
-                np.ones(n_features, dtype='int')*n_bins))[0]
-            index_bin[ravel_index].append(i)
-            information_bin[ravel_index].append(information[i])
-        information_index, information_val = [], []
-        for infob, idxb in zip(information_bin, index_bin):
-            idx, val = (0, 0) if len(infob) == 0 else max(zip(idxb, infob), key=lambda x: x[1])
-            information_index.append(idx)
-            information_val.append(val)
-        pdf = [len(idxb) for idxb in index_bin]
-        plt.figure()
-        plt.plot(pdf)
-        plt.savefig('pdf.png')
-        print('saved pdf.png')
-        choose_mat = np.multiply(information_val, pdf)
-        # choose
+        logger.info('cal distance matrix...')
+        UU = cdist(U, U)
+
+        logger.info('cal similarity...')
+        # uncertainty
+        predictions = self.model.predict(X_unlabeled)
+        sim_labeled = -np.sum(predictions * np.log(predictions + 1e-10), axis=1)
+
+        # unlabeled density
+        dis_unlabeled = UU.mean(axis=0)
+        sim_unlabeled = 1 / (epsilon + dis_unlabeled)
         selected_indices = []
-        for i in range(amount):
-            which_bin = np.argmax(choose_mat)
-            which_index = information_index[which_bin]
-            selected_indices.append(which_index)
-            # udpate
-            pdf[which_bin] -= 1
-            information_bin[which_bin].remove(information[which_index])
-            index_bin[which_bin].remove(which_index)
-            information_index[which_bin], information_val[which_bin] = max(
-                zip(index_bin[which_bin], information_bin[which_bin]), key=lambda x: x[1])
-            choose_mat[which_bin] = pdf[which_bin]*information_val[which_bin]
+        N = UU.shape[0]
+        for i in tqdm(range(amount)):
+            # sample
+            sim = (sim_labeled)**self.alpha * sim_unlabeled
+            sample_index = np.argmax(sim)
+            selected_indices.append(sample_index)
 
+            # update
+            sample = UU[sample_index, :]
+            sim_labeled[sample_index] = 0
+            dis_unlabeled = (dis_unlabeled * N - sample) / (N-1)
+            # dis_unlabeled[a] = 9999
+            sim_unlabeled = 1 / (epsilon + dis_unlabeled)
+            N -= 1
         labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
         return labeled_idx
 
@@ -439,7 +421,7 @@ class DiscriminativeRepresentationSampling(QueryMethod):
             [labeled_idx.shape[0]*10, unlabeled_idx.size]), replace=False)
 
         embedding_model = Model(inputs=self.model.input,
-                                outputs=self.model.get_layer('softmax').input)
+                                outputs=self.model.get_layer('coding').output)
         representation = embedding_model.predict(
             X_train, batch_size=128).reshape((X_train.shape[0], -1, 1))
 
@@ -548,7 +530,7 @@ class DiscriminativeStochasticSampling(QueryMethod):
             [labeled_idx.shape[0]*10, unlabeled_idx.size]), replace=False)
 
         embedding_model = Model(inputs=self.model.input,
-                                outputs=self.model.get_layer('softmax').input)
+                                outputs=self.model.get_layer('coding').output)
         representation = embedding_model.predict(
             X_train, batch_size=256).reshape((X_train.shape[0], -1, 1))
 
@@ -628,7 +610,7 @@ class CoreSetSampling(QueryMethod):
 
         # use the learned representation for the k-greedy-center algorithm:
         representation_model = Model(inputs=self.model.input,
-                                     outputs=self.model.get_layer('softmax').input)
+                                     outputs=self.model.get_layer('coding').output)
         representation = representation_model.predict(X_train, verbose=0)
         new_indices = self.greedy_k_center(
             representation[labeled_idx, :], representation[unlabeled_idx, :], amount)
@@ -857,7 +839,7 @@ class CoreSetMIPSampling(QueryMethod):
 
         # use the learned representation for the k-greedy-center algorithm:
         representation_model = Model(inputs=self.model.input,
-                                     outputs=self.model.get_layer('softmax').input)
+                                     outputs=self.model.get_layer('coding').output)
         representation = representation_model.predict(X_train, batch_size=128, verbose=0)
         print("Calculating Greedy K-Center Solution...")
         new_indices, max_delta = self.greedy_k_center(

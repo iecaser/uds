@@ -19,6 +19,7 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.externals import joblib
 import gc
+from loguru import logger
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
@@ -45,6 +46,7 @@ def parse_input():
                    default=None,
                    help="path to a folder with a pickle file with the initial indices of the labeled set")
     p.add_argument('--gpu', '-gpu', type=int, default=2)
+    p.add_argument('--visible', '-visible', type=str, default='0,1,2,3')
     args = p.parse_args()
     return args
 
@@ -100,7 +102,7 @@ def load_cifar_10():
     load and pre-process the CIFAR-10 data
     """
 
-    dirname = ''  # TODO: your path here
+    dirname = '/home/zxf/.keras/datasets/cifar-10-batches-py/'  # TODO: your path here
 
     num_train_samples = 50000
 
@@ -204,6 +206,10 @@ if __name__ == '__main__':
     # parse the arguments:
     args = parse_input()
 
+    # visible gpus
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.visible
+    args.gpu = len(args.visible.split(','))
+
     # load the dataset:
     if args.data_type == 'mnist':
         (X_train, Y_train), (X_test, Y_test) = load_mnist()
@@ -231,6 +237,10 @@ if __name__ == '__main__':
         evaluation_function = train_cifar100_model
     if args.data_type == 'dd':
         (X_train, Y_train), (X_test, Y_test) = load_dd()
+        logger.info('[shape]: X_train: {}; Y_train: {}; X_test: {}; Y_test: {}'.format(X_train.shape,
+                                                                                       Y_train.shape,
+                                                                                       X_test.shape,
+                                                                                       Y_test.shape))
         num_labels = 1
         if K.image_data_format() == 'channels_last':
             input_shape = (32, 32, 3)
@@ -374,7 +384,7 @@ if __name__ == '__main__':
     accuracies.append(acc)
     tqdm.write("Test Accuracy Is " + str(acc))
     # print("Test Accuracy Is " + str(acc))
-    for i in tqdm(range(args.iterations)):
+    for i in (range(args.iterations)):
 
         # get the new indices from the algorithm
         old_labeled = np.copy(labeled_idx)

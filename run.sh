@@ -1,6 +1,7 @@
 initial_size=1000
 batch_size=5000
 iterations=4
+visible='0,1'
 for idx in {0..9}
 do
     echo "------- Random $idx... -------"

@@ -219,7 +219,7 @@ def get_VGG_model(input_shape, labels=10):
     model.add(Flatten())
     model.add(Dense(512, kernel_regularizer=regularizers.l2(weight_decay), name='embedding'))
     model.add(Activation('relu'))
-    model.add(BatchNormalization())
+    model.add(BatchNormalization(name='coding'))
     model.add(Dropout(0.5))
     model.add(Dense(labels, activation='softmax', name='softmax'))
 
@@ -249,10 +249,7 @@ def get_autoencoder_model(input_shape, labels=10):
     return autoencoder
 
 
-def get_text_cnn(vocab_size=5000, max_length=128):
-    vocab_size = 10000
-    embedding_dim = 128
-    sequence_length = 128
+def get_text_cnn(vocab_size=10000, sequence_length=128, embedding_dim=128):
     num_filters = 256
     filter_sizes = [3, 4, 5]
     inputs = layers.Input(shape=(sequence_length,), dtype='int32')
@@ -269,7 +266,7 @@ def get_text_cnn(vocab_size=5000, max_length=128):
     concatenate = layers.Concatenate(axis=1)(maxpools)
     flatten = layers.Flatten()(concatenate)
     dp1 = layers.Dropout(0.5)(flatten)
-    fc = layers.Dense(units=128, activation='relu')(dp1)
+    fc = layers.Dense(units=128, activation='relu', name='coding')(dp1)
     dp2 = layers.Dropout(0.5)(fc)
     outputs = layers.Dense(units=1, activation='sigmoid')(dp2)
     model = keras.Model(inputs=inputs, outputs=outputs)
@@ -382,7 +379,6 @@ def train_cifar10_model(X_train, Y_train, X_validation, Y_validation, checkpoint
     """
     A function that trains and returns a VGG model on the labeled CIFAR-10 data.
     """
-
     if K.image_data_format() == 'channels_last':
         input_shape = (32, 32, 3)
     else:
@@ -392,6 +388,16 @@ def train_cifar10_model(X_train, Y_train, X_validation, Y_validation, checkpoint
     optimizer = optimizers.Adam()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     callbacks = [DelayedModelCheckpoint(filepath=checkpoint_path, verbose=1, weights=True)]
+    # callbacks = [keras.callbacks.EarlyStopping(patience=30,
+    #                                            monitor='val_acc',
+    #                                            mode='max',
+    #                                            restore_best_weights=True),
+    #              # keras.callbacks.ModelCheckpoint(checkpoint_path,
+    #              #                                 monitor='val_acc',
+    #              #                                 verbose=1,
+    #              #                                 save_best_only=True,
+    #              #                                 mode='auto'),
+    #              ]
 
     if gpu > 1:
         gpu_model = ModelMGPU(model, gpus=gpu)
@@ -405,13 +411,14 @@ def train_cifar10_model(X_train, Y_train, X_validation, Y_validation, checkpoint
                       callbacks=callbacks,
                       verbose=2)
 
+        # gpu_model.save_weights(checkpoint_path)
         del gpu_model
         del model
+        K.clear_session()
 
         model = get_VGG_model(input_shape=input_shape, labels=10)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         model.load_weights(checkpoint_path)
-
         return model
 
     else:
@@ -422,7 +429,7 @@ def train_cifar10_model(X_train, Y_train, X_validation, Y_validation, checkpoint
                   validation_data=(X_validation, Y_validation),
                   callbacks=callbacks,
                   verbose=2)
-
+        # model.save_weights(checkpoint_path)
         model.load_weights(checkpoint_path)
         return model
 
@@ -480,36 +487,48 @@ def train_dd_model(X_train, Y_train, X_validation, Y_validation, checkpoint_path
     """
     A function that trains and returns a VGG model on the labeled CIFAR-100 data.
     """
-
-    model = get_text_cnn(vocab_size=5000, max_length=128)
-    callbacks = [DelayedModelCheckpoint(filepath=checkpoint_path, verbose=0, weights=True)]
-    # callbacks = [keras.callbacks.EarlyStopping(patience=30)]
-
+    model = get_text_cnn()
+    optimizer = optimizers.Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    callbacks = [DelayedModelCheckpoint(filepath=checkpoint_path, verbose=1, weights=True)]
+    # callbacks = [keras.callbacks.EarlyStopping(patience=30,
+    #                                            monitor='val_acc',
+    #                                            mode='max',
+    #                                            restore_best_weights=True),
+    #              # keras.callbacks.ModelCheckpoint(checkpoint_path,
+    #              #                                 monitor='val_loss',
+    #              #                                 verbose=1,
+    #              #                                 save_best_only=True,
+    #              #                                 mode='min'),
+    #              ]
     if gpu > 1:
         gpu_model = ModelMGPU(model, gpus=gpu)
-        gpu_model.compile(loss='binary_crossentropy',
-                          optimizer='adam',
-                          metrics=['accuracy'])
+        gpu_model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         gpu_model.fit(X_train, Y_train,
                       epochs=1000,
-                      batch_size=256,
+                      batch_size=128,
                       shuffle=True,
                       validation_data=(X_validation, Y_validation),
                       callbacks=callbacks,
-                      verbose=0)
+                      verbose=2)
+        # gpu_model.save_weights(checkpoint_path)
         del gpu_model
         del model
-        model = get_text_cnn(vocab_size=5000, max_length=128)
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+        K.clear_session()
+
+        model = get_text_cnn()
+        model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         model.load_weights(checkpoint_path)
         return model
+
     else:
+        model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
         model.fit(X_train, Y_train,
                   epochs=1000,
                   batch_size=256,
                   shuffle=True,
                   validation_data=(X_validation, Y_validation),
                   callbacks=callbacks,
-                  verbose=0)
+                  verbose=2)
+        # model.save_weights(checkpoint_path)
         model.load_weights(checkpoint_path)
-        return model
+    return model
