@@ -143,7 +143,7 @@ def get_LeNet_model(input_shape, labels=10):
     model.add(Conv2D(64, (3, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
-    model.add(Dense(128, activation='relu', name='embedding'))
+    model.add(Dense(128, activation='relu', name='coding'))
     model.add(Dropout(0.5))
     model.add(Dense(labels, activation='softmax', name='softmax'))
     return model

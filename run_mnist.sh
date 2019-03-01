@@ -1,7 +1,7 @@
-initial_size=5000
-batch_size=5000
+initial_size=100
+batch_size=1000
 iterations=4
-dataset="cifar10"
+dataset="mnist"
 visible="0,1,2,3"
 exp="exp"
 for idx in {0..5}
