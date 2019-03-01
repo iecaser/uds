@@ -4,7 +4,7 @@ iterations=4
 dataset="cifar10"
 visible="0,1,2,3"
 exp="exp"
-for idx in {0..5}
+for idx in {0..9}
 do
     echo "------- Random $idx... -------"
     python3 main.py $idx $dataset $batch_size $initial_size $iterations "Random" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Random/" --visible $visible
