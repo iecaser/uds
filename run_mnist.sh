@@ -1,5 +1,5 @@
-initial_size=100
-batch_size=1000
+initial_size=1000
+batch_size=5000
 iterations=4
 dataset="mnist"
 visible="0,1,2,3"

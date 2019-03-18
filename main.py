@@ -7,8 +7,6 @@ import pickle
 import os
 import sys
 import argparse
-import jieba
-import keras
 from keras.utils import to_categorical
 from keras import backend as K
 from sklearn.datasets import load_boston, load_diabetes
@@ -90,7 +88,8 @@ def load_mnist():
     x_test = np.array(x_test).astype('float32') / 255
 
     # shuffle the data:
-    perm = np.random.permutation(x_train.shape[0])
+    rng = np.random.RandomState(1234)
+    perm = rng.permutation(x_train.shape[0])
     x_train = x_train[perm]
     y_train = y_train[perm]
 
@@ -129,7 +128,8 @@ def load_cifar_10():
         x_test = x_test.transpose(0, 2, 3, 1)
 
     # shuffle the data:
-    perm = np.random.permutation(x_train.shape[0])
+    rng = np.random.RandomState(1234)
+    perm = rng.permutation(x_train.shape[0])
     x_train = x_train[perm]
     y_train = y_train[perm]
 

@@ -11,8 +11,6 @@ import keras.backend as K
 from keras.losses import categorical_crossentropy
 from keras.layers import Lambda
 from keras import optimizers
-from cleverhans.attacks import FastGradientMethod, DeepFool
-from cleverhans.utils_keras import KerasModelWrapper
 import numpy as np
 from models import *
 import matplotlib.pyplot as plt
@@ -324,6 +322,8 @@ class AdversarialSampling(QueryMethod):
         unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
         unlabeled = X_train[unlabeled_idx]
 
+        from cleverhans.attacks import FastGradientMethod, DeepFool
+        from cleverhans.utils_keras import KerasModelWrapper
         keras_wrapper = KerasModelWrapper(self.model)
         sess = K.get_session()
         deep_fool = DeepFool(keras_wrapper, sess=sess)
