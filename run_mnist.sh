@@ -1,9 +1,10 @@
-initial_size=1000
-batch_size=5000
-iterations=4
+initial_size=100
+batch_size=100
+iterations=20
 dataset="mnist"
-visible="0,1,2,3"
+visible="1,2,3"
 exp="exp"
+# mkdir Random Uncertainty CoreSet UncertaintyDensity DualDensity
 for idx in {0..5}
 do
     echo "------- Random $idx... -------"
