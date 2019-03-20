@@ -110,9 +110,10 @@ class UncertaintyEntropySampling(QueryMethod):
 class DualDensity(QueryMethod):
     """By zxf"""
 
-    def __init__(self, model, input_shape, num_labels, gpu, alpha=0.8):
+    def __init__(self, model, input_shape, num_labels, gpu, alpha=0.8, n_neighbors=0):
         super().__init__(model, input_shape, num_labels, gpu)
         self.alpha = alpha
+        self.n_neighbors = n_neighbors
 
     def query(self, X_train, Y_train, labeled_idx, amount):
         epsilon = 0.00001
@@ -135,13 +136,31 @@ class DualDensity(QueryMethod):
         LU = cdist(L, U)
         UU = cdist(U, U)
 
-        logger.info('cal similarity...')
+        n_neighbors = self.n_neighbors
+        logger.info(f'cal similarity(n_neighbors: {n_neighbors})...')
         # labeled density
-        sim_labeled = LU.min(axis=0)
+        if n_neighbors == 1:
+            sim_labeled = LU.min(axis=0)
+        elif n_neighbors == 0:
+            sim_labeled = LU.mean(axis=0)
+        else:
+            raise NotImplementedError
+
+        def update_sim(sim_labeled, sample, n_neighbors):
+            if n_neighbors == 1:
+                sim_labeled = np.c_[sim_labeled, sample].min(axis=1)
+            elif n_neighbors == 0:
+                sim_labeled = (sim_labeled * M + sample) / (M+1)
+            else:
+                raise NotImplementedError
+            sim_labeled[sample_index] = 0
+            return sim_labeled
+
         # unlabeled density
         dis_unlabeled = UU.mean(axis=0)
         sim_unlabeled = 1 / (epsilon + dis_unlabeled)
         selected_indices = []
+        M = LU.shape[0]
         N = UU.shape[0]
         for i in tqdm(range(amount)):
             # sample
@@ -151,11 +170,12 @@ class DualDensity(QueryMethod):
 
             # update
             sample = UU[sample_index, :]
-            sim_labeled = np.c_[sim_labeled, sample].min(axis=1)
-            sim_labeled[sample_index] = 0
+            sim_labeled = update_sim(sim_labeled, sample, n_neighbors)
+
             dis_unlabeled = (dis_unlabeled * N - sample) / (N-1)
             # dis_unlabeled[a] = 9999
             sim_unlabeled = 1 / (epsilon + dis_unlabeled)
+            M += 1
             N -= 1
         labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
         return labeled_idx
@@ -181,9 +201,6 @@ class UncertaintyDensity(QueryMethod):
         logger.info('labeled data representation shape: {}'.format(L.shape))
         logger.info('unlabeled data representation shape: {}'.format(U.shape))
         assert L.shape[1] == U.shape[1]
-        del embedding_model
-        gc.collect()
-        K.clear_session()
 
         logger.info('cal distance matrix...')
         UU = cdist(U, U)
@@ -191,6 +208,9 @@ class UncertaintyDensity(QueryMethod):
         logger.info('cal similarity...')
         # uncertainty
         predictions = self.model.predict(X_unlabeled)
+        del embedding_model
+        gc.collect()
+        K.clear_session()
         sim_labeled = -np.sum(predictions * np.log(predictions + 1e-10), axis=1)
 
         # unlabeled density

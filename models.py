@@ -353,7 +353,7 @@ def train_mnist_model(X_train, Y_train, X_validation, Y_validation, checkpoint_p
                       shuffle=True,
                       validation_data=(X_validation, Y_validation),
                       callbacks=callbacks,
-                      verbose=0)
+                      verbose=2)
 
         del model
         del gpu_model
@@ -370,7 +370,7 @@ def train_mnist_model(X_train, Y_train, X_validation, Y_validation, checkpoint_p
                   shuffle=True,
                   validation_data=(X_validation, Y_validation),
                   callbacks=callbacks,
-                  verbose=0)
+                  verbose=2)
         model.load_weights(checkpoint_path)
         return model
 
