@@ -1,9 +1,9 @@
-initial_size=500
-batch_size=1000
+initial_size=100
+batch_size=100
 iterations=30
 dataset="mnist"
-visible="1,2,3"
-exp="exp.0"
+visible="2,3"
+exp="exp.100.100.30"
 mkdir $exp
 mkdir $exp/Random $exp/Uncertainty $exp/CoreSet $exp/UncertaintyDensity $exp/DualDensity
 for idx in {0..5}

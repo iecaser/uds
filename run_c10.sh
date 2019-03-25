@@ -1,10 +1,12 @@
-initial_size=5000
-batch_size=5000
-iterations=4
+initial_size=1000
+batch_size=1000
+iterations=30
 dataset="cifar10"
-visible="0,1,2,3"
-exp="exp"
-for idx in {0..9}
+visible="0,1"
+exp="exp.1000.1000"
+mkdir $exp
+mkdir $exp/Random $exp/Uncertainty $exp/CoreSet $exp/UncertaintyDensity $exp/DualDensity
+for idx in {0..5}
 do
     echo "------- Random $idx... -------"
     python3 main.py $idx $dataset $batch_size $initial_size $iterations "Random" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Random/" --visible $visible

@@ -132,6 +132,11 @@ def get_discriminative_model(input_shape):
     return model
 
 
+# def get_FC_model(input_shape, labels):
+#     model = Sequential()
+#     model.add(Dense(64, activation bb))
+
+
 def get_LeNet_model(input_shape, labels=10):
     """
     A LeNet model for MNIST.

@@ -19,6 +19,7 @@ from sklearn.externals import joblib
 import gc
 from loguru import logger
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+SEED = 1234
 
 
 def parse_input():
@@ -68,6 +69,20 @@ def load_batch(fpath, label_key='labels'):
     return data, labels
 
 
+def load_IRIS():
+    from sklearn.datasets import load_iris
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+    iris = load_iris()
+    ss = StandardScaler()
+    enc = OneHotEncoder()
+    X, y = iris['data'], iris['target']
+    X = ss.fit_transform(X)
+    y = enc.fit_transform(y)
+    X_train, X_val, y_train, y_val = train_test_split(X, y, random_state=SEED)
+    return (X_train, y_train), (X_val, y_val)
+
+
 def load_mnist():
     """
     load and pre-process the MNIST data
@@ -88,7 +103,7 @@ def load_mnist():
     x_test = np.array(x_test).astype('float32') / 255
 
     # shuffle the data:
-    rng = np.random.RandomState(1234)
+    rng = np.random.RandomState(SEED)
     perm = rng.permutation(x_train.shape[0])
     x_train = x_train[perm]
     y_train = y_train[perm]
@@ -128,7 +143,7 @@ def load_cifar_10():
         x_test = x_test.transpose(0, 2, 3, 1)
 
     # shuffle the data:
-    rng = np.random.RandomState(1234)
+    rng = np.random.RandomState(SEED)
     perm = rng.permutation(x_train.shape[0])
     x_train = x_train[perm]
     y_train = y_train[perm]
@@ -261,7 +276,8 @@ if __name__ == '__main__':
             labeled_idx = pickle.load(f)
     else:
         print("No Initial Indices Found - Drawing Random Indices...")
-        labeled_idx = np.random.choice(X_train.shape[0], args.initial_size, replace=False)
+        rng = np.random.RandomState(SEED)
+        labeled_idx = rng.choice(X_train.shape[0], args.initial_size, replace=False)
 
     # set the first query method:
     if args.method == 'Random':
