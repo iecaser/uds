@@ -3,7 +3,7 @@ batch_size=1000
 iterations=30
 dataset="cifar10"
 visible="0,1"
-exp="exp.1000.1000"
+exp="exp.1000.1000.min"
 mkdir $exp
 mkdir $exp/Random $exp/Uncertainty $exp/CoreSet $exp/UncertaintyDensity $exp/DualDensity
 for idx in {0..5}

@@ -3,7 +3,7 @@ batch_size=100
 iterations=30
 dataset="mnist"
 visible="2,3"
-exp="exp.100.100.30"
+exp="exp.100.100.30.min"
 mkdir $exp
 mkdir $exp/Random $exp/Uncertainty $exp/CoreSet $exp/UncertaintyDensity $exp/DualDensity
 for idx in {0..5}

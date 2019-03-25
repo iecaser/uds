@@ -110,7 +110,7 @@ class UncertaintyEntropySampling(QueryMethod):
 class DualDensity(QueryMethod):
     """By zxf"""
 
-    def __init__(self, model, input_shape, num_labels, gpu, alpha=1, n_neighbors=0):
+    def __init__(self, model, input_shape, num_labels, gpu, alpha=1, n_neighbors=1):
         super().__init__(model, input_shape, num_labels, gpu)
         self.alpha = alpha
         self.n_neighbors = n_neighbors
