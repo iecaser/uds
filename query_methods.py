@@ -110,12 +110,22 @@ class UncertaintyEntropySampling(QueryMethod):
 class DualDensity(QueryMethod):
     """By zxf"""
 
-    def __init__(self, model, input_shape, num_labels, gpu, alpha=1, n_neighbors=1):
+    def __init__(self, model, input_shape, num_labels, gpu, alpha=1, n_neighbors=0):
         super().__init__(model, input_shape, num_labels, gpu)
         self.alpha = alpha
         self.n_neighbors = n_neighbors
 
+    def cal_neighbor_density(self, DM, n_neighbors):
+        if n_neighbors == -1:
+            dis = DM.mean(axis=0)
+        else:
+            # i.e. n_neighbors=1, cal top 2 mean(1 neighbor + point itself)
+            # n_neighbors=0, cal LU.min(axis=0)
+            dis = np.partition(DM, n_neighbors, axis=0)[:n_neighbors+1].mean(axis=0)
+        return dis
+
     def query(self, X_train, Y_train, labeled_idx, amount):
+
         epsilon = 0.00001
         # representation
         unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
@@ -135,48 +145,26 @@ class DualDensity(QueryMethod):
         logger.info('cal distance matrix...')
         LU = cdist(L, U)
         UU = cdist(U, U)
-
+        MIN_DISTANCE = 0
+        MAX_DISTANCE = 9999
         n_neighbors = self.n_neighbors
+
         logger.info(f'cal similarity(n_neighbors: {n_neighbors})...')
-        # labeled density
-        if n_neighbors == 1:
-            sim_labeled = LU.min(axis=0)
-        elif n_neighbors == 0:
-            sim_labeled = LU.mean(axis=0)
-        else:
-            raise NotImplementedError
-
-        def update_sim(sim_labeled, sample, n_neighbors):
-            if n_neighbors == 1:
-                sim_labeled = np.c_[sim_labeled, sample].min(axis=1)
-            elif n_neighbors == 0:
-                sim_labeled = (sim_labeled * M + sample) / (M+1)
-            else:
-                raise NotImplementedError
-            sim_labeled[sample_index] = 0
-            return sim_labeled
-
-        # unlabeled density
-        dis_unlabeled = UU.mean(axis=0)
-        sim_unlabeled = 1 / (epsilon + dis_unlabeled)
         selected_indices = []
-        M = LU.shape[0]
-        N = UU.shape[0]
         for i in tqdm(range(amount)):
+            # cal
+            dis_labeled = self.cal_neighbor_density(LU, n_neighbors)
+            dis_unlabeled = self.cal_neighbor_density(UU, n_neighbors)
+            score = (dis_labeled)**self.alpha / (epsilon + dis_unlabeled)
             # sample
-            sim = (sim_labeled)**self.alpha * sim_unlabeled
-            sample_index = np.argmax(sim)
+            sample_index = np.argmax(score)
             selected_indices.append(sample_index)
-
-            # update
             sample = UU[sample_index, :]
-            sim_labeled = update_sim(sim_labeled, sample, n_neighbors)
-
-            dis_unlabeled = (dis_unlabeled * N - sample) / (N-1)
-            # dis_unlabeled[a] = 9999
-            sim_unlabeled = 1 / (epsilon + dis_unlabeled)
-            M += 1
-            N -= 1
+            # update
+            LU = np.r_[LU, sample.reshape(1, -1)]
+            LU[:, sample_index] = MIN_DISTANCE
+            UU[sample_index, :] = MAX_DISTANCE
+            UU[:, sample_index] = MAX_DISTANCE
         labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
         return labeled_idx
 

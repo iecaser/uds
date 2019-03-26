@@ -10,6 +10,12 @@ import argparse
 from keras.utils import to_categorical
 from keras import backend as K
 from sklearn.datasets import load_boston, load_diabetes
+from sklearn.datasets import load_iris as load_iris_dataset
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from loguru import logger
+import keras
+import tensorflow as tf
 from tqdm import tqdm
 from models import *
 from query_methods import *
@@ -17,16 +23,15 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.externals import joblib
 import gc
-from loguru import logger
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-SEED = 1234
+SEED = 12345
 
 
 def parse_input():
     p = argparse.ArgumentParser()
     p.add_argument('experiment_index', type=int, help="index of current experiment")
     p.add_argument('data_type', type=str, choices={
-                   'mnist', 'cifar10', 'cifar100', 'dd'}, help="data type (mnist/cifar10/cifar100/dd)")
+                   'mnist', 'cifar10', 'cifar100', 'iris'}, help="data type (mnist/iris/cifar10/cifar100)")
     p.add_argument('batch_size', type=int, help="active learning batch size")
     p.add_argument('initial_size', type=int, help="initial sample size for active learning")
     p.add_argument('iterations', type=int, help="number of active learning batches to sample")
@@ -69,16 +74,13 @@ def load_batch(fpath, label_key='labels'):
     return data, labels
 
 
-def load_IRIS():
-    from sklearn.datasets import load_iris
-    from sklearn.model_selection import train_test_split
-    from sklearn.preprocessing import StandardScaler, OneHotEncoder
-    iris = load_iris()
+def load_iris():
+    iris = load_iris_dataset()
     ss = StandardScaler()
-    enc = OneHotEncoder()
     X, y = iris['data'], iris['target']
     X = ss.fit_transform(X)
-    y = enc.fit_transform(y)
+    # enc = OneHotEncoder()
+    # y = enc.fit_transform(y.reshape(-1, 1)).toarray()
     X_train, X_val, y_train, y_val = train_test_split(X, y, random_state=SEED)
     return (X_train, y_train), (X_val, y_val)
 
@@ -234,6 +236,14 @@ if __name__ == '__main__':
         else:
             input_shape = (1, 28, 28)
         evaluation_function = train_mnist_model
+    if args.data_type == 'iris':
+        (X_train, Y_train), (X_test, Y_test) = load_iris()
+        num_labels = 3
+        if K.image_data_format() == 'channels_last':
+            input_shape = 4
+        else:
+            input_shape = 4
+        evaluation_function = train_iris_model
     if args.data_type == 'cifar10':
         (X_train, Y_train), (X_test, Y_test) = load_cifar_10()
         num_labels = 10
@@ -250,18 +260,6 @@ if __name__ == '__main__':
         else:
             input_shape = (3, 32, 32)
         evaluation_function = train_cifar100_model
-    if args.data_type == 'dd':
-        (X_train, Y_train), (X_test, Y_test) = load_dd()
-        logger.info('[shape]: X_train: {}; Y_train: {}; X_test: {}; Y_test: {}'.format(X_train.shape,
-                                                                                       Y_train.shape,
-                                                                                       X_test.shape,
-                                                                                       Y_test.shape))
-        num_labels = 1
-        if K.image_data_format() == 'channels_last':
-            input_shape = (32, 32, 3)
-        else:
-            input_shape = (3, 32, 32)
-        evaluation_function = train_dd_model
 
     # make categorical:
     if num_labels > 1:

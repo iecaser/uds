@@ -18,8 +18,10 @@ flags.DEFINE_integer('batch', 100, 'batch size')
 
 
 def main(argv):
+    save_dir = 'results'
     basepath = os.path.join('/home/zxf/workspace/DiscriminativeActiveLearning/', FLAGS.exp)
     methods = os.listdir(basepath)
+    methods.remove(save_dir)
     valid_methods = []
     for mp in methods:
         logger.info('method : {}'.format(mp))
@@ -40,7 +42,8 @@ def main(argv):
             acc = np.array(acc).mean(axis=0)
             plt.plot(acc)
     plt.legend(valid_methods)
-    plt.savefig('{}_{}_{}_{}.png'.format(FLAGS.dataset, FLAGS.init, FLAGS.batch, FLAGS.idx))
+    plt.savefig('{}/{}/{}_{}_{}_{}.png'.format(FLAGS.exp, save_dir,
+                                               FLAGS.dataset, FLAGS.init, FLAGS.batch, FLAGS.idx))
 
 
 if __name__ == '__main__':
