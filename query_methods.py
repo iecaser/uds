@@ -110,23 +110,24 @@ class UncertaintyEntropySampling(QueryMethod):
 class DualDensity(QueryMethod):
     """By zxf"""
 
-    def __init__(self, model, input_shape, num_labels, gpu, alpha=1, n_neighbors=0):
+    def __init__(self, model, input_shape, num_labels, gpu, alpha=1):
         super().__init__(model, input_shape, num_labels, gpu)
         self.alpha = alpha
-        self.n_neighbors = n_neighbors
-
-    def cal_neighbor_density(self, DM, n_neighbors):
-        if n_neighbors == -1:
-            dis = DM.mean(axis=0)
-        else:
-            # i.e. n_neighbors=1, cal top 2 mean(1 neighbor + point itself)
-            # n_neighbors=0, cal LU.min(axis=0)
-            dis = np.partition(DM, n_neighbors, axis=0)[:n_neighbors+1].mean(axis=0)
-        return dis
 
     def query(self, X_train, Y_train, labeled_idx, amount):
+        def init_dis(DM, n):
+            if n == -1:
+                dis = LU.mean(axis=1)
+            elif n == 0:
+                dis = LU.min(axis=1)
+            else:
+                dis = np.partition(DM, n, axis=0)[:n+1].mean(axis=0)
+            return dis
 
-        epsilon = 0.00001
+        # params
+        EPSILON = 0.00001
+        MIN_DISTANCE, MAX_DISTANCE = 0, 9999
+
         # representation
         unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
         X_labeled = X_train[labeled_idx, :]
@@ -145,26 +146,45 @@ class DualDensity(QueryMethod):
         logger.info('cal distance matrix...')
         LU = cdist(L, U)
         UU = cdist(U, U)
-        MIN_DISTANCE = 0
-        MAX_DISTANCE = 9999
-        n_neighbors = self.n_neighbors
+        M, N = LU.shape[0], UU.shape[0]
+        # l_neighbors = 0
+        # u_neighbors = N//10
+        l_neighbors = 1
+        u_neighbors = 10
 
-        logger.info(f'cal similarity(n_neighbors: {n_neighbors})...')
+        logger.info(f'cal similarity...')
         selected_indices = []
+
+        dis_labeled = init_dis(LU, l_neighbors)
+        dis_unlabeled = init_dis(UU, u_neighbors)
         for i in tqdm(range(amount)):
-            # cal
-            dis_labeled = self.cal_neighbor_density(LU, n_neighbors)
-            dis_unlabeled = self.cal_neighbor_density(UU, n_neighbors)
-            score = (dis_labeled)**self.alpha / (epsilon + dis_unlabeled)
             # sample
+            score = (dis_labeled)**self.alpha / (EPSILON+dis_unlabeled)
             sample_index = np.argmax(score)
-            selected_indices.append(sample_index)
             sample = UU[sample_index, :]
-            # update
-            LU = np.r_[LU, sample.reshape(1, -1)]
-            LU[:, sample_index] = MIN_DISTANCE
-            UU[sample_index, :] = MAX_DISTANCE
-            UU[:, sample_index] = MAX_DISTANCE
+            selected_indices.append(sample_index)
+            # update labeled
+            if l_neighbors == -1:
+                dis_labeled = (dis_labeled*M + sample) / (M+1)
+                M += 1
+            elif l_neighbors == 0:
+                dis_labeled = np.c_[dis_labeled, sample].min(axis=1)
+            else:
+                LU = np.r_[LU, sample.reshape(1, -1)]
+                LU[:, sample_index] = MIN_DISTANCE
+                dis_labeled = np.partition(LU, l_neighbors, axis=0)[:l_neighbors+1].mean(axis=0)
+            assert dis_labeled[sample_index] == 0, 'U->L, LU min distance at new sampled index will be zero'
+            # update labeled
+            if u_neighbors == -1:
+                dis_unlabeled = (dis_unlabeled * N - sample) / (N-1)
+                N -= 1
+            elif u_neighbors == 0:
+                dis_unlabeled == np.c_[dis_unlabeled, sample].min(axis=1)
+            else:
+                UU[sample_index, :] = MAX_DISTANCE
+                UU[:, sample_index] = MAX_DISTANCE
+                dis_unlabeled = np.partition(UU, u_neighbors, axis=0)[:u_neighbors+1].mean(axis=0)
+            dis_unlabeled[sample_index] = MAX_DISTANCE
         labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
         return labeled_idx
 

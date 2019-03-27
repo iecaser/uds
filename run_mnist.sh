@@ -3,10 +3,10 @@ batch_size=100
 iterations=30
 dataset="mnist"
 visible="2,3"
-exp="exp.100.100.30.min"
+exp="mnist.100.100.30.l0u_1"
 mkdir $exp
 mkdir $exp/results $exp/Random $exp/Uncertainty $exp/CoreSet $exp/UncertaintyDensity $exp/DualDensity
-for idx in {0..10}
+for idx in {0..20}
 do
     echo "------- Random $idx... -------"
     python3 main.py $idx $dataset $batch_size $initial_size $iterations "Random" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Random/" --visible $visible

@@ -1,11 +1,12 @@
-initial_size=5
-batch_size=5
-iterations=20
+initial_size=10
+batch_size=40
+iterations=3
+CUDA_VISIBLE_DEVICES="3"
 dataset="iris"
-exp="iris.5.5.20.0"
+exp="iris.${initial_size}.${batch_size}.${iterations}.l1u10"
 mkdir $exp
 mkdir $exp/results $exp/Random $exp/Uncertainty $exp/CoreSet $exp/UncertaintyDensity $exp/DualDensity
-for idx in {0..100}
+for idx in {0..200}
 do
     echo "------- Random $idx... -------"
     python3 main.py $idx $dataset $batch_size $initial_size $iterations "Random" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Random/"

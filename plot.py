@@ -27,12 +27,14 @@ def main(argv):
         logger.info('method : {}'.format(mp))
         if FLAGS.idx == 999:
             filepath = glob.glob(os.path.join(
-                basepath, mp, 'results/*{}_{}_{}_[0-9].pkl'.format(FLAGS.dataset, FLAGS.init, FLAGS.batch)))
+                basepath, mp, 'results/*{}_{}_{}_[0-9]*.pkl'.format(FLAGS.dataset, FLAGS.init, FLAGS.batch)))
         else:
             filepath = glob.glob(os.path.join(
                 basepath, mp, 'results/*{}_{}_{}_{}.pkl'.format(FLAGS.dataset, FLAGS.init, FLAGS.batch, FLAGS.idx)))
         acc = []
         for fp in filepath:
+            if 'entropy' in fp:
+                continue
             print(fp)
             with open(fp, 'rb') as f:
                 accuracies, initial_size, batch_size = pickle.load(f)
@@ -43,7 +45,8 @@ def main(argv):
             plt.plot(acc)
     plt.legend(valid_methods)
     plt.savefig('{}/{}/{}_{}_{}_{}.png'.format(FLAGS.exp, save_dir,
-                                               FLAGS.dataset, FLAGS.init, FLAGS.batch, FLAGS.idx))
+                                               FLAGS.dataset, FLAGS.init,
+                                               FLAGS.batch, FLAGS.idx))
 
 
 if __name__ == '__main__':
