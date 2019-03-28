@@ -1,7 +1,7 @@
 initial_size=10
-batch_size=40
-iterations=3
-CUDA_VISIBLE_DEVICES="3"
+batch_size=10
+iterations=10
+visible="1"
 dataset="iris"
 exp="iris.${initial_size}.${batch_size}.${iterations}.l1u10"
 mkdir $exp
@@ -9,19 +9,19 @@ mkdir $exp/results $exp/Random $exp/Uncertainty $exp/CoreSet $exp/UncertaintyDen
 for idx in {0..200}
 do
     echo "------- Random $idx... -------"
-    python3 main.py $idx $dataset $batch_size $initial_size $iterations "Random" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Random/"
+    python3 main.py $idx $dataset $batch_size $initial_size $iterations "Random" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Random/" --visible $visible
 
     echo "------- Uncertainty $idx... -------"
-    python3 main.py $idx $dataset $batch_size $initial_size $iterations "Uncertainty" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Uncertainty/"
+    python3 main.py $idx $dataset $batch_size $initial_size $iterations "Uncertainty" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Uncertainty/" --visible $visible
 
     echo "------- CoreSet $idx... -------"
-    python3 main.py $idx $dataset $batch_size $initial_size $iterations "CoreSet" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/CoreSet/"
+    python3 main.py $idx $dataset $batch_size $initial_size $iterations "CoreSet" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/CoreSet/" --visible $visible
 
     echo "------- UncertaintyDensity $idx... -------"
-    python3 main.py $idx $dataset $batch_size $initial_size $iterations "UncertaintyDensity" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/UncertaintyDensity/"
+    python3 main.py $idx $dataset $batch_size $initial_size $iterations "UncertaintyDensity" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/UncertaintyDensity/" --visible $visible
 
     echo "------- DualDensity $idx... -------"
-    python3 main.py $idx $dataset $batch_size $initial_size $iterations "DualDensity" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/DualDensity/"
+    python3 main.py $idx $dataset $batch_size $initial_size $iterations "DualDensity" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/DualDensity/" --visible $visible
 
     echo "------ ploting ...."
     python3 plot.py --idx $idx --exp $exp --dataset $dataset --init $initial_size --batch $batch_size
