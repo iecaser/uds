@@ -144,8 +144,8 @@ class DualDensity(QueryMethod):
         K.clear_session()
 
         logger.info('cal distance matrix...')
-        LU = cdist(L, U)
-        UU = cdist(U, U)
+        LU = cdist(L, U, metric='cosine')
+        UU = cdist(U, U, metirc='cosine')
         M, N = LU.shape[0], UU.shape[0]
         # l_neighbors = 0
         # u_neighbors = N//10
@@ -211,7 +211,7 @@ class UncertaintyDensity(QueryMethod):
         assert L.shape[1] == U.shape[1]
 
         logger.info('cal distance matrix...')
-        UU = cdist(U, U)
+        UU = cdist(U, U, metric='cosine')
 
         logger.info('cal similarity...')
         # uncertainty
