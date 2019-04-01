@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import normalize
 from scipy.spatial.distance import cdist
+from sklearn.metrics.pairwise import cosine_similarity, cosine_distances
 from tqdm import tqdm
 from loguru import logger
 
@@ -110,19 +111,23 @@ class UncertaintyEntropySampling(QueryMethod):
 class DualDensity(QueryMethod):
     """By zxf"""
 
-    def __init__(self, model, input_shape, num_labels, gpu, alpha=1):
+    def __init__(self, model, input_shape, num_labels, gpu, l_neighbors=-1, u_neighbors=-1):
         super().__init__(model, input_shape, num_labels, gpu)
-        self.alpha = alpha
+        self.l_neighbors = l_neighbors
+        self.u_neighbors = u_neighbors
 
     def query(self, X_train, Y_train, labeled_idx, amount):
-        def init_dis(DM, n):
+        l_neighbors = self.l_neighbors
+        u_neighbors = self.u_neighbors
+
+        def init_metric(DM, n):
             if n == -1:
-                dis = LU.mean(axis=1)
+                met = DM.mean(axis=1)
             elif n == 0:
-                dis = LU.min(axis=1)
+                met = DM.min(axis=1)
             else:
-                dis = np.partition(DM, n, axis=0)[:n+1].mean(axis=0)
-            return dis
+                met = np.partition(DM, n, axis=0)[:n+1].mean(axis=0)
+            return met
 
         # params
         EPSILON = 0.00001
@@ -144,47 +149,47 @@ class DualDensity(QueryMethod):
         K.clear_session()
 
         logger.info('cal distance matrix...')
-        LU = cdist(L, U, metric='cosine')
-        UU = cdist(U, U, metirc='cosine')
+        LU = cosine_distances(L, U)
+        UU = cosine_similarity(U)
+        # LU = cdist(L, U, metric='cosine')
+        # UU = cdist(U, U, metirc='cosine')
         M, N = LU.shape[0], UU.shape[0]
-        # l_neighbors = 0
-        # u_neighbors = N//10
-        l_neighbors = 1
-        u_neighbors = 10
 
         logger.info(f'cal similarity...')
         selected_indices = []
 
-        dis_labeled = init_dis(LU, l_neighbors)
-        dis_unlabeled = init_dis(UU, u_neighbors)
+        dis_l = init_metric(LU, l_neighbors)
+        sim_u = init_metric(UU, u_neighbors)
         for i in tqdm(range(amount)):
             # sample
-            score = (dis_labeled)**self.alpha / (EPSILON+dis_unlabeled)
+            # score = (dis_labeled)**self.alpha / (EPSILON+dis_unlabeled)
+            score = dis_l * sim_u
             sample_index = np.argmax(score)
-            sample = UU[sample_index, :]
+            sample_sim = UU[sample_index, :]
+            sample_dis = 1 - sample_sim
             selected_indices.append(sample_index)
             # update labeled
             if l_neighbors == -1:
-                dis_labeled = (dis_labeled*M + sample) / (M+1)
+                dis_l = (dis_l*M + sample_dis) / (M+1)
                 M += 1
             elif l_neighbors == 0:
-                dis_labeled = np.c_[dis_labeled, sample].min(axis=1)
+                dis_l = np.c_[dis_l, sample_dis].min(axis=1)
             else:
-                LU = np.r_[LU, sample.reshape(1, -1)]
+                LU = np.r_[LU, sample_dis.reshape(1, -1)]
                 LU[:, sample_index] = MIN_DISTANCE
                 dis_labeled = np.partition(LU, l_neighbors, axis=0)[:l_neighbors+1].mean(axis=0)
-            assert dis_labeled[sample_index] == 0, 'U->L, LU min distance at new sampled index will be zero'
+            assert dis_l[sample_index] == 0, 'U->L, LU min distance at new sampled index will be zero'
             # update labeled
             if u_neighbors == -1:
-                dis_unlabeled = (dis_unlabeled * N - sample) / (N-1)
+                sim_u = (sim_u * N - sample_sim) / (N-1)
                 N -= 1
             elif u_neighbors == 0:
-                dis_unlabeled == np.c_[dis_unlabeled, sample].min(axis=1)
+                sim_u == np.c_[sim_u, sample_sim].min(axis=1)
             else:
                 UU[sample_index, :] = MAX_DISTANCE
                 UU[:, sample_index] = MAX_DISTANCE
-                dis_unlabeled = np.partition(UU, u_neighbors, axis=0)[:u_neighbors+1].mean(axis=0)
-            dis_unlabeled[sample_index] = MAX_DISTANCE
+                sim_u = np.partition(UU, u_neighbors, axis=0)[:u_neighbors+1].mean(axis=0)
+            sim_u[sample_index] = MAX_DISTANCE
         labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
         return labeled_idx
 
@@ -192,9 +197,8 @@ class DualDensity(QueryMethod):
 class UncertaintyDensity(QueryMethod):
     """By zxf"""
 
-    def __init__(self, model, input_shape, num_labels, gpu, alpha=0.8):
+    def __init__(self, model, input_shape, num_labels, gpu):
         super().__init__(model, input_shape, num_labels, gpu)
-        self.alpha = alpha
 
     def query(self, X_train, Y_train, labeled_idx, amount):
         epsilon = 0.00001
@@ -228,7 +232,7 @@ class UncertaintyDensity(QueryMethod):
         N = UU.shape[0]
         for i in tqdm(range(amount)):
             # sample
-            sim = (sim_labeled)**self.alpha * sim_unlabeled
+            sim = (sim_labeled) * sim_unlabeled
             sample_index = np.argmax(sim)
             selected_indices.append(sample_index)
 
