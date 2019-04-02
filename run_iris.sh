@@ -1,9 +1,9 @@
 initial_size=10
-batch_size=10
-iterations=10
+batch_size=20
+iterations=5
 visible="1"
 dataset="iris"
-exp="iris.${initial_size}.${batch_size}.${iterations}.l1u10"
+exp="iris.${initial_size}.${batch_size}.${iterations}.laua"
 mkdir $exp
 mkdir $exp/results $exp/Random $exp/Uncertainty $exp/CoreSet $exp/UncertaintyDensity $exp/DualDensity
 for idx in {0..200}

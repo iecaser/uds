@@ -120,18 +120,27 @@ class DualDensity(QueryMethod):
         l_neighbors = self.l_neighbors
         u_neighbors = self.u_neighbors
 
-        def init_metric(DM, n):
+        def init_dis(DM, n):
             if n == -1:
-                met = DM.mean(axis=1)
+                dis = DM.mean(axis=0)
             elif n == 0:
-                met = DM.min(axis=1)
+                dis = DM.min(axis=0)
             else:
-                met = np.partition(DM, n, axis=0)[:n+1].mean(axis=0)
-            return met
+                dis = np.partition(DM, n, axis=0)[:n+1].mean(axis=0)
+            return dis
+
+        def init_sim(SM, n):
+            if n == -1:
+                sim = SM.mean(axis=0)
+            elif n == 0:
+                sim = SM.max(axis=0)
+            else:
+                sim = -np.partition(-SM, n, axis=0)[:n+1].mean(axis=0)
+            return sim
 
         # params
         EPSILON = 0.00001
-        MIN_DISTANCE, MAX_DISTANCE = 0, 9999
+        BLANK = 0
 
         # representation
         unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
@@ -148,23 +157,18 @@ class DualDensity(QueryMethod):
         gc.collect()
         K.clear_session()
 
-        logger.info('cal distance matrix...')
         LU = cosine_distances(L, U)
         UU = cosine_similarity(U)
-        # LU = cdist(L, U, metric='cosine')
-        # UU = cdist(U, U, metirc='cosine')
         M, N = LU.shape[0], UU.shape[0]
-
-        logger.info(f'cal similarity...')
-        selected_indices = []
-
-        dis_l = init_metric(LU, l_neighbors)
-        sim_u = init_metric(UU, u_neighbors)
+        logger.info('cal similarity...')
+        selected_indices, scores = [], []
+        dis_l = init_dis(LU, l_neighbors)
+        sim_u = init_sim(UU, u_neighbors)
         for i in tqdm(range(amount)):
             # sample
-            # score = (dis_labeled)**self.alpha / (EPSILON+dis_unlabeled)
             score = dis_l * sim_u
             sample_index = np.argmax(score)
+            scores.append(score[sample_index])
             sample_sim = UU[sample_index, :]
             sample_dis = 1 - sample_sim
             selected_indices.append(sample_index)
@@ -178,18 +182,16 @@ class DualDensity(QueryMethod):
                 LU = np.r_[LU, sample_dis.reshape(1, -1)]
                 LU[:, sample_index] = MIN_DISTANCE
                 dis_labeled = np.partition(LU, l_neighbors, axis=0)[:l_neighbors+1].mean(axis=0)
-            assert dis_l[sample_index] == 0, 'U->L, LU min distance at new sampled index will be zero'
             # update labeled
             if u_neighbors == -1:
                 sim_u = (sim_u * N - sample_sim) / (N-1)
                 N -= 1
-            elif u_neighbors == 0:
-                sim_u == np.c_[sim_u, sample_sim].min(axis=1)
             else:
-                UU[sample_index, :] = MAX_DISTANCE
-                UU[:, sample_index] = MAX_DISTANCE
-                sim_u = np.partition(UU, u_neighbors, axis=0)[:u_neighbors+1].mean(axis=0)
-            sim_u[sample_index] = MAX_DISTANCE
+                UU[sample_index, :], UU[:, sample_index] = BLANK, BLANK
+                sim_u = -np.partition(-UU, u_neighbors, axis=0)[:u_neighbors+1].mean(axis=0)
+            dis_l[sample_index], sim_u[sample_index] = BLANK, BLANK
+        # print(scores)
+        logger.info('scores sum: {}'.format(sum(scores)))
         labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
         return labeled_idx
 
