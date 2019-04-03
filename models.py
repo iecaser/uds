@@ -406,7 +406,7 @@ def train_iris_model(X_train, Y_train, X_validation, Y_validation, checkpoint_pa
               shuffle=True,
               validation_data=(X_validation, Y_validation),
               callbacks=callbacks,
-              verbose=2)
+              verbose=0)
     model.load_weights(checkpoint_path)
     return model
 

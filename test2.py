@@ -30,7 +30,6 @@ def init_sim(SM, n):
 
 # params
 amount = 10
-EPSILON = 0.00001
 rng = np.random.RandomState(12345)
 L = rng.randn(100, dim)
 U = rng.randn(500, dim)
@@ -62,8 +61,8 @@ for i in tqdm(range(amount)):
         dis_l = np.c_[dis_l, sample_dis].min(axis=1)
     else:
         LU = np.r_[LU, sample_dis.reshape(1, -1)]
-        LU[:, sample_index] = MIN_DISTANCE
-        dis_labeled = np.partition(LU, l_neighbors, axis=0)[:l_neighbors+1].mean(axis=0)
+        LU[:, sample_index] = BLANK
+        dis_l = np.partition(LU, l_neighbors, axis=0)[:l_neighbors+1].mean(axis=0)
     # update labeled
     if u_neighbors == -1:
         sim_u = (sim_u * N - sample_sim) / (N-1)

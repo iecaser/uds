@@ -1,12 +1,13 @@
 initial_size=10
 batch_size=20
 iterations=5
-visible="1"
+visible="0,1"
 dataset="iris"
 exp="iris.${initial_size}.${batch_size}.${iterations}.laua"
+smooth=${dataset}_${initial_size}_${batch_size}_999
 mkdir $exp
-mkdir $exp/results $exp/Random $exp/Uncertainty $exp/CoreSet $exp/UncertaintyDensity $exp/DualDensity
-for idx in {0..200}
+mkdir $exp/results $exp/Random $exp/Uncertainty $exp/CoreSet $exp/UncertaintyDensity $exp/DualDensity $exp/UncertaintyDualDensity
+for idx in {0..20}
 do
     echo "------- Random $idx... -------"
     python3 main.py $idx $dataset $batch_size $initial_size $iterations "Random" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Random/" --visible $visible
@@ -23,7 +24,13 @@ do
     echo "------- DualDensity $idx... -------"
     python3 main.py $idx $dataset $batch_size $initial_size $iterations "DualDensity" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/DualDensity/" --visible $visible
 
+    echo "------- UncertaintyDualDensity $idx... -------"
+    python3 main.py $idx $dataset $batch_size $initial_size $iterations "UncertaintyDualDensity" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/UncertaintyDualDensity/" --visible $visible
+
     echo "------ ploting ...."
     python3 plot.py --idx $idx --exp $exp --dataset $dataset --init $initial_size --batch $batch_size
+
+    python3 plot.py --exp $exp --dataset $dataset --init $initial_size --batch $batch_size
+    mv ${smooth}.png ${smooth}.$idx.png
 done
 python3 plot.py --exp $exp --dataset $dataset --init $initial_size --batch $batch_size
