@@ -136,8 +136,8 @@ def get_iris_model(input_shape=4, labels=3):
     # n_features = X_train.shape[1]
     # n_classes = y_train.shape[1]
     model = keras.models.Sequential()
-    model.add(keras.layers.Dense(64, input_dim=input_shape, activation='relu'))
-    model.add(keras.layers.Dense(64,  activation='relu', name='coding'))
+    model.add(keras.layers.Dense(16, input_dim=input_shape, activation='relu'))
+    model.add(keras.layers.Dense(16,  activation='relu', name='coding'))
     model.add(keras.layers.Dense(labels, activation='softmax'))
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
@@ -398,10 +398,10 @@ def train_iris_model(X_train, Y_train, X_validation, Y_validation, checkpoint_pa
     optimizer = optimizers.Adam()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     callbacks = [DelayedModelCheckpoint(
-        filepath=checkpoint_path, delay=20, verbose=0, weights=True)]
+        filepath=checkpoint_path, delay=10, verbose=0, weights=True)]
 
     model.fit(X_train, Y_train,
-              epochs=100,
+              epochs=50,
               batch_size=4,
               shuffle=True,
               validation_data=(X_validation, Y_validation),

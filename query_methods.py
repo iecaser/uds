@@ -111,7 +111,7 @@ class UncertaintyEntropySampling(QueryMethod):
 class DualDensityBase(QueryMethod):
     """By zxf"""
 
-    def __init__(self, model, input_shape, num_labels, gpu, l_neighbors=-1, u_neighbors=-1):
+    def __init__(self, model, input_shape, num_labels, gpu, l_neighbors=0, u_neighbors=-1):
         super().__init__(model, input_shape, num_labels, gpu)
         self.l_neighbors = l_neighbors
         self.u_neighbors = u_neighbors
@@ -159,7 +159,8 @@ class DualDensityBase(QueryMethod):
 
     def query(self, X_train, Y_train, labeled_idx, amount):
         # params
-        BLANK = 0
+        MIN_DISTANCE = 0
+        MIN_SIMILARITY = 0
         l_neighbors, u_neighbors = self.l_neighbors, self.u_neighbors
         unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
         X_labeled = X_train[labeled_idx, :]
@@ -170,23 +171,24 @@ class DualDensityBase(QueryMethod):
         L, U = self.get_embedding(X_labeled=X_labeled, X_unlabeled=X_unlabeled)
         # distance & similarity
         logger.info('cal LU distance...')
-        LU = cosine_distances(L, U)
-        logger.info('cal UU similarity...')
-        UU = cosine_similarity(U)
+        # LU = cosine_distances(L, U)
+        LU = 1.0 - cosine_similarity(L, U)
+        logger.info('cal UU similarity(+1)...')
+        UU = cosine_similarity(U) + 1.0
         M, N = LU.shape[0], UU.shape[0]
         selected_indices, scores = [], []
         dis_l = self._init_dis(LU, l_neighbors)
         sim_u = self._init_sim(UU, u_neighbors)
         for i in tqdm(range(amount)):
             # sample
-            score = self.cal_score(distance_to_lalbeled=dis_l,
+            score = self.cal_score(distance_to_labeled=dis_l,
                                    similarity_to_unlabeled=sim_u,
                                    uncertainty_of_labeled=uct_l,
                                    uncertainty_of_unlabeled=uct_u)
             sample_index = np.argmax(score)
             scores.append(score[sample_index])
             sample_sim = UU[sample_index, :]
-            sample_dis = 1 - sample_sim
+            sample_dis = 2 - sample_sim
             selected_indices.append(sample_index)
             # update labeled
             if l_neighbors == -1:
@@ -196,18 +198,19 @@ class DualDensityBase(QueryMethod):
                 dis_l = np.c_[dis_l, sample_dis].min(axis=1)
             else:
                 LU = np.r_[LU, sample_dis.reshape(1, -1)]
-                LU[:, sample_index] = BLANK
+                LU[:, sample_index] = MIN_DISTANCE
                 dis_l = np.partition(LU, l_neighbors, axis=0)[:l_neighbors+1].mean(axis=0)
             # update labeled
             if u_neighbors == -1:
                 sim_u = (sim_u * N - sample_sim) / (N-1)
                 N -= 1
             else:
-                UU[sample_index, :], UU[:, sample_index] = BLANK, BLANK
+                UU[sample_index, :], UU[:, sample_index] = MIN_SIMILARITY, MIN_SIMILARITY
                 sim_u = -np.partition(-UU, u_neighbors, axis=0)[:u_neighbors+1].mean(axis=0)
-            dis_l[sample_index], sim_u[sample_index] = BLANK, BLANK
+            dis_l[selected_indices], sim_u[selected_indices] = MIN_DISTANCE, MIN_SIMILARITY
         # print(scores)
         logger.info('scores sum: {}'.format(sum(scores)))
+        assert len(selected_indices) == len(set(selected_indices))
         labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
         return labeled_idx
 
@@ -215,36 +218,59 @@ class DualDensityBase(QueryMethod):
 class UncertaintyDensity(DualDensityBase):
     """By zxf"""
 
-    def cal_score(self, distance_to_lalbeled, similarity_to_unlabeled,
+    def cal_score(self, distance_to_labeled, similarity_to_unlabeled,
                   uncertainty_of_labeled, uncertainty_of_unlabeled):
         assert uncertainty_of_unlabeled.shape == similarity_to_unlabeled.shape
         score = uncertainty_of_unlabeled * similarity_to_unlabeled
         return score
 
 
+class UncertaintyDistance(DualDensityBase):
+    """By zxf"""
+
+    def cal_score(self, distance_to_labeled, similarity_to_unlabeled,
+                  uncertainty_of_labeled, uncertainty_of_unlabeled):
+        assert uncertainty_of_unlabeled.shape == similarity_to_unlabeled.shape
+        score = uncertainty_of_unlabeled * distance_to_labeled
+        return score
+
+
 class DualDensity(DualDensityBase):
     """By zxf"""
 
-    def cal_score(self, distance_to_lalbeled, similarity_to_unlabeled,
+    def cal_score(self, distance_to_labeled, similarity_to_unlabeled,
                   uncertainty_of_labeled, uncertainty_of_unlabeled):
-        assert distance_to_lalbeled.shape == similarity_to_unlabeled.shape
-        score = distance_to_lalbeled * similarity_to_unlabeled
+        assert distance_to_labeled.shape == similarity_to_unlabeled.shape
+        # score = distance_to_labeled * similarity_to_unlabeled
+        score = distance_to_labeled * similarity_to_unlabeled
+        return score
+
+
+class Distance(DualDensityBase):
+    """By zxf"""
+
+    def cal_score(self, distance_to_labeled, similarity_to_unlabeled,
+                  uncertainty_of_labeled, uncertainty_of_unlabeled):
+        score = distance_to_labeled
         return score
 
 
 class UncertaintyDualDensity(DualDensityBase):
     """By zxf"""
 
-    def cal_score(self, distance_to_lalbeled, similarity_to_unlabeled,
+    def cal_score(self, distance_to_labeled, similarity_to_unlabeled,
                   uncertainty_of_labeled, uncertainty_of_unlabeled):
-        assert distance_to_lalbeled.shape == similarity_to_unlabeled.shape == uncertainty_of_unlabeled.shape
-        score = distance_to_lalbeled * similarity_to_unlabeled * uncertainty_of_unlabeled
+        assert distance_to_labeled.shape\
+            == similarity_to_unlabeled.shape\
+            == uncertainty_of_unlabeled.shape
+        score = (distance_to_labeled * similarity_to_unlabeled) * uncertainty_of_unlabeled
         return score
 
 
 class BayesianUncertaintySampling(QueryMethod):
     """
-    An implementation of the Bayesian active learning method, using minimal top confidence as the decision rule.
+    An implementation of the Bayesian active learning method,
+    using minimal top confidence as the decision rule.
     """
 
     def __init__(self, model, input_shape, num_labels, gpu):

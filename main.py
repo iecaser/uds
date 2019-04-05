@@ -36,7 +36,7 @@ def parse_input():
     p.add_argument('initial_size', type=int, help="initial sample size for active learning")
     p.add_argument('iterations', type=int, help="number of active learning batches to sample")
     p.add_argument('method', type=str,
-                   choices={'Random', 'DualDensity', 'UncertaintyDualDensity', 'CoreSet', 'CoreSetMIP', 'Discriminative', 'DiscriminativeLearned', 'DiscriminativeAE',
+                   choices={'Random', 'DualDensity', 'Distance', 'UncertaintyDistance', 'UncertaintyDualDensity', 'CoreSet', 'CoreSetMIP', 'Discriminative', 'DiscriminativeLearned', 'DiscriminativeAE',
                             'DiscriminativeStochastic', 'Uncertainty', 'UncertaintyDensity', 'Bayesian', 'UncertaintyEntropy', 'BayesianEntropy', 'EGL', 'Adversarial'},
                    help="sampling method ('Random','DualDensity,'CoreSet','CoreSetMIP','Discriminative','DiscriminativeLearned','DiscriminativeAE','DiscriminativeStochastic','Uncertainty','Bayesian','UncertaintyEntropy','BayesianEntropy','EGL','Adversarial')")
     p.add_argument('experiment_folder', type=str,
@@ -282,6 +282,10 @@ if __name__ == '__main__':
         method = RandomSampling
     elif args.method == 'DualDensity':
         method = DualDensity
+    elif args.method == 'Distance':
+        method = Distance
+    elif args.method == 'UncertaintyDistance':
+        method = UncertaintyDistance
     elif args.method == 'UncertaintyDualDensity':
         method = DualDensity
     elif args.method == 'UncertaintyDensity':
