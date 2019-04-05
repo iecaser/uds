@@ -90,6 +90,7 @@ def load_mnist():
     load and pre-process the MNIST data
     """
 
+    HEAD = 10000
     from keras.datasets import mnist
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -107,8 +108,8 @@ def load_mnist():
     # shuffle the data:
     rng = np.random.RandomState(SEED)
     perm = rng.permutation(x_train.shape[0])
-    x_train = x_train[perm]
-    y_train = y_train[perm]
+    x_train = x_train[perm][:HEAD]
+    y_train = y_train[perm][:HEAD]
 
     return (x_train, y_train), (x_test, y_test)
 
