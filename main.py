@@ -90,7 +90,7 @@ def load_mnist():
     load and pre-process the MNIST data
     """
 
-    HEAD = 10000
+    HEAD = 20000
     from keras.datasets import mnist
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 

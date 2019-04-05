@@ -157,7 +157,9 @@ def get_LeNet_model(input_shape, labels=10):
     model.add(Conv2D(64, (3, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
-    model.add(Dense(128, activation='relu', name='coding'))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(64, activation='relu', name='coding'))
     model.add(Dropout(0.5))
     model.add(Dense(labels, activation='softmax', name='softmax'))
     return model
@@ -367,7 +369,7 @@ def train_mnist_model(X_train, Y_train, X_validation, Y_validation, checkpoint_p
                       shuffle=True,
                       validation_data=(X_validation, Y_validation),
                       callbacks=callbacks,
-                      verbose=2)
+                      verbose=0)
 
         del model
         del gpu_model
@@ -384,7 +386,7 @@ def train_mnist_model(X_train, Y_train, X_validation, Y_validation, checkpoint_p
                   shuffle=True,
                   validation_data=(X_validation, Y_validation),
                   callbacks=callbacks,
-                  verbose=2)
+                  verbose=0)
         model.load_weights(checkpoint_path)
         return model
 

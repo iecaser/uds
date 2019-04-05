@@ -1,8 +1,8 @@
 #!/bin/bash
 
 initial_size=10
-batch_size=20
-iterations=5
+batch_size=10
+iterations=10
 visible="0"
 dataset="iris"
 exp="iris.${initial_size}.${batch_size}.${iterations}.laua"
@@ -11,7 +11,7 @@ mkdir $exp
 mkdir $exp/results $exp/Random $exp/Uncertainty $exp/CoreSet\
       $exp/UncertaintyDensity $exp/DualDensity $exp/UncertaintyDualDensity\
       $exp/UncertaintyEntropy $exp/Distance $exp/UncertaintyDistance
-for idx in {0..100};
+for idx in {0..500};
 do
     echo "------- Random $idx... -------"
     python3 main.py $idx $dataset $batch_size $initial_size $iterations "Random" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Random/" --visible $visible
@@ -19,14 +19,14 @@ do
     echo "------- Uncertainty $idx... -------"
     python3 main.py $idx $dataset $batch_size $initial_size $iterations "Uncertainty" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Uncertainty/" --visible $visible
 
-    # echo "------- UncertaintyEntropy $idx... -------"
-    # python3 main.py $idx $dataset $batch_size $initial_size $iterations "UncertaintyEntropy" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/UncertaintyEntropy/" --visible $visible
-
-    # echo "------- CoreSet $idx... -------"
-    # python3 main.py $idx $dataset $batch_size $initial_size $iterations "CoreSet" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/CoreSet/" --visible $visible
-
-    # echo "------- UncertaintyDensity $idx... -------"
-    # python3 main.py $idx $dataset $batch_size $initial_size $iterations "UncertaintyDensity" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/UncertaintyDensity/" --visible $visible
+    echo "------- UncertaintyEntropy $idx... -------"
+    python3 main.py $idx $dataset $batch_size $initial_size $iterations "UncertaintyEntropy" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/UncertaintyEntropy/" --visible $visible
+#
+    echo "------- CoreSet $idx... -------"
+    python3 main.py $idx $dataset $batch_size $initial_size $iterations "CoreSet" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/CoreSet/" --visible $visible
+#
+    echo "------- UncertaintyDensity $idx... -------"
+    python3 main.py $idx $dataset $batch_size $initial_size $iterations "UncertaintyDensity" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/UncertaintyDensity/" --visible $visible
 
     echo "------- Distance $idx... -------"
     python3 main.py $idx $dataset $batch_size $initial_size $iterations "Distance" "/home/zxf/workspace/DiscriminativeActiveLearning/$exp/Distance/" --visible $visible
