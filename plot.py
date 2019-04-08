@@ -16,14 +16,18 @@ flags.DEFINE_string('dataset', 'mnist', 'Specified dataset')
 flags.DEFINE_integer('init', 100, 'initial size')
 flags.DEFINE_integer('batch', 100, 'batch size')
 
+MARKERS = ['+:', 'x-.', 'd--', 's-', '.:', '|-.', ',--', '1-', 'p:', '*-.', '^--', 'o-']
 
-def main(argv):
+
+def main(_):
     save_dir = 'results'
     basepath = os.path.join('/home/zxf/workspace/DiscriminativeActiveLearning/', FLAGS.exp)
     methods = os.listdir(basepath)
     methods.remove(save_dir)
     valid_methods = []
-    for mp in methods:
+    plt.rcParams['savefig.dpi'] = 300  # 图片像素
+    plt.rcParams['figure.dpi'] = 300  # 分辨率
+    for i, mp in enumerate(methods):
         logger.info('method : {}'.format(mp))
         if FLAGS.idx == 999:
             filepath = glob.glob(os.path.join(
@@ -42,7 +46,7 @@ def main(argv):
         if len(acc) > 0:
             valid_methods.append(mp)
             acc = np.array(acc).mean(axis=0)
-            plt.plot(acc)
+            plt.plot(acc, MARKERS[i], linewidth=1, markersize=2.5)
     plt.legend(valid_methods)
     plt.savefig('{}/{}/{}_{}_{}_{}.png'.format(FLAGS.exp, save_dir,
                                                FLAGS.dataset, FLAGS.init,
