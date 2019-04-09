@@ -131,8 +131,8 @@ class DualDensityBase(QueryMethod):
 
     def get_uncertainty(self, X, n_classes=2):
         predictions = self.model.predict(X)
-        uncertainty = -np.sum(predictions * np.log(predictions + 1e-10), axis=1)
-        uncertainty = uncertainty / np.log(n_classes)
+        uncertainty = -np.sum(predictions * np.log(predictions + 1e-13), axis=1)
+        # uncertainty = uncertainty / np.log(n_classes)
         logger.info('uncertainty shape: {}'.format(uncertainty.shape))
         return uncertainty
 
@@ -160,7 +160,7 @@ class DualDensityBase(QueryMethod):
 
     def query(self, X_train, Y_train, labeled_idx, amount):
         # params
-        MIN_DISTANCE, MIN_SIMILARITY, MIN_SCORE = 0, 0, -9999
+        MIN_DISTANCE, MIN_SIMILARITY, MIN_SCORE = 0, 0, -99999
         n_classes = Y_train.shape[1]
         l_neighbors, u_neighbors = self.l_neighbors, self.u_neighbors
         unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
@@ -211,7 +211,7 @@ class DualDensityBase(QueryMethod):
                 sim_u = -np.partition(-UU, u_neighbors, axis=0)[:u_neighbors+1].mean(axis=0)
             dis_l[selected_indices], sim_u[selected_indices] = MIN_DISTANCE, MIN_SIMILARITY
         # print(scores)
-        logger.info('scores sum: {}'.format(sum(scores)))
+        logger.info('scores sum: {}'.format(np.sum(scores)))
         assert len(selected_indices) == len(set(selected_indices))
         labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
         return labeled_idx
@@ -220,13 +220,40 @@ class DualDensityBase(QueryMethod):
 class UncertaintyDensity(DualDensityBase):
     """By zxf"""
 
-    def cal_score(self, distance_to_labeled, similarity_to_unlabeled,
-                  uncertainty_of_labeled, uncertainty_of_unlabeled):
-        assert uncertainty_of_unlabeled.shape == similarity_to_unlabeled.shape
-        # score = uncertainty_of_unlabeled * similarity_to_unlabeled
-        score = np.log(similarity_to_unlabeled + 1e-10)\
-            + np.log(uncertainty_of_unlabeled + 1e-10)
-        return score
+    def get_embedding(self, X_labeled, X_unlabeled, batch_size=128):
+        embedding_model = Model(inputs=self.model.input,
+                                outputs=self.model.get_layer('coding').output)
+        L = embedding_model.predict(X_labeled, batch_size=batch_size)
+        U = embedding_model.predict(X_unlabeled, batch_size=batch_size)
+        logger.info('labeled data representation shape: {}'.format(L.shape))
+        logger.info('unlabeled data representation shape: {}'.format(U.shape))
+        assert L.shape[1] == U.shape[1]
+        del embedding_model
+        gc.collect()
+        K.clear_session()
+        return L, U
+
+    def get_uncertainty(self, X, n_classes=2):
+        predictions = self.model.predict(X)
+        uncertainty = -np.sum(predictions * np.log(predictions + 1e-10), axis=1)
+        # uncertainty = uncertainty / np.log(n_classes)
+        logger.info('uncertainty shape: {}'.format(uncertainty.shape))
+        return uncertainty
+
+    def query(self, X_train, Y_train, labeled_idx, amount):
+
+        unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
+        X_labeled = X_train[labeled_idx, :]
+        X_unlabeled = X_train[unlabeled_idx, :]
+        uct_u = self.get_uncertainty(X_unlabeled, n_classes=n_classes)
+        _, U = self.get_embedding(X_labeled=X_labeled, X_unlabeled=X_unlabeled)
+        # similarity
+        logger.info('cal UU similarity(+1)...')
+        UU = cosine_similarity(U) + 1.0
+        sim = UU.mean(axis=0)
+        score = -uct_u * sim
+        selected_indices = np.argpartition(score, amount)[:amount]
+        return np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
 
 
 class UncertaintyDistance(DualDensityBase):
@@ -285,7 +312,8 @@ class DynamicUncertaintyDualDensity(DualDensityBase):
         assert distance_to_labeled.shape\
             == similarity_to_unlabeled.shape\
             == uncertainty_of_unlabeled.shape
-        coef = min(0.1 / uncertainty_of_unlabeled.mean(), 10)
+        coef = min(0.1 / uncertainty_of_unlabeled.mean(), 20)
+        print(coef)
         # score = distance_to_labeled * similarity_to_unlabeled * (uncertainty_of_unlabeled)**coef
         score = np.log(distance_to_labeled + 1e-10)\
             + np.log(similarity_to_unlabeled + 1e-10)\
