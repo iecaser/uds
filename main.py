@@ -37,7 +37,7 @@ def parse_input():
     p.add_argument('iterations', type=int, help="number of active learning batches to sample")
     p.add_argument('method', type=str,
                    choices={'Random', 'DualDensity', 'Distance', 'UncertaintyDistance', 'UncertaintyDualDensity', 'DynamicUncertaintyDualDensity', 'CoreSet', 'CoreSetMIP', 'Discriminative', 'DiscriminativeLearned', 'DiscriminativeAE',
-                            'DiscriminativeStochastic', 'Uncertainty', 'UncertaintyDensity', 'Bayesian', 'UncertaintyEntropy', 'BayesianEntropy', 'EGL', 'Adversarial'},
+                            'DiscriminativeStochastic', 'Uncertainty', 'UncertaintyDensity', 'AntiUncertaintyDualDensity', 'Bayesian', 'UncertaintyEntropy', 'BayesianEntropy', 'EGL', 'Adversarial'},
                    help="sampling method ('Random','DualDensity,'CoreSet','CoreSetMIP','Discriminative','DiscriminativeLearned','DiscriminativeAE','DiscriminativeStochastic','Uncertainty','Bayesian','UncertaintyEntropy','BayesianEntropy','EGL','Adversarial')")
     p.add_argument('experiment_folder', type=str,
                    help="folder where the experiment results will be saved")
@@ -291,6 +291,8 @@ if __name__ == '__main__':
         method = UncertaintyDualDensity
     elif args.method == 'DynamicUncertaintyDualDensity':
         method = DynamicUncertaintyDualDensity
+    elif args.method == 'AntiUncertaintyDualDensity':
+        method = AntiUncertaintyDualDensity
     elif args.method == 'UncertaintyDensity':
         method = UncertaintyDensity
     elif args.method == 'CoreSet':
