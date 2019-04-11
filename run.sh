@@ -16,12 +16,13 @@ for idx in {0..500}
                     DualDensity\
                     UncertaintyDualDensity\
                     DynamicUncertaintyDualDensity\
+                    EGL\
+                    Uncertainty
                     # UncertaintyDistance\
                     # Adversarial\
                     # AntiUncertaintyDualDensity\
                     # UncertaintyEntropy\
                     # Distance\
-                    Uncertainty
     do
         mexp=$exp/$method
         if [ ! -d $mexp ]; then

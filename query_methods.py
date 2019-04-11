@@ -189,8 +189,8 @@ class DualDensityBase(QueryMethod):
         sim_u = self._init_sim(UU, u_neighbors)
         for i in tqdm(range(amount)):
             # sample
-            logger.info('dis_l min/max:{}/{}'.format(dis_l.min(), dis_l.max()))
-            logger.info('sim_u min/max:{}/{}'.format(sim_u.min(), sim_u.max()))
+            # logger.info('dis_l min/max:{}/{}'.format(dis_l.min(), dis_l.max()))
+            # logger.info('sim_u min/max:{}/{}'.format(sim_u.min(), sim_u.max()))
             score = self.cal_score(distance_to_labeled=dis_l,
                                    similarity_to_unlabeled=sim_u,
                                    uncertainty_of_labeled=uct_l,

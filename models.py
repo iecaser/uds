@@ -153,13 +153,11 @@ def get_LeNet_model(input_shape, labels=10):
 
     model = Sequential()
     model.add(Conv2D(32, (3, 3), activation='relu', input_shape=input_shape))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(64, (3, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.25))
     model.add(Flatten())
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(64, activation='relu', name='coding'))
+    model.add(Dense(128, activation='relu', name='coding'))
     model.add(Dropout(0.5))
     model.add(Dense(labels, activation='softmax', name='softmax'))
     return model
@@ -233,9 +231,9 @@ def get_VGG_model(input_shape, labels=10):
     model.add(Dropout(0.5))
 
     model.add(Flatten())
-    model.add(Dense(512, kernel_regularizer=regularizers.l2(weight_decay), name='embedding'))
+    model.add(Dense(512, kernel_regularizer=regularizers.l2(weight_decay), name='coding'))
     model.add(Activation('relu'))
-    model.add(BatchNormalization(name='coding'))
+    model.add(BatchNormalization())
     model.add(Dropout(0.5))
     model.add(Dense(labels, activation='softmax', name='softmax'))
 
@@ -448,12 +446,12 @@ def train_cifar10_model(X_train, Y_train, X_validation, Y_validation, checkpoint
 
     else:
         model.fit(X_train, Y_train,
-                  epochs=400,
+                  epochs=300,
                   batch_size=32,
                   shuffle=True,
                   validation_data=(X_validation, Y_validation),
                   callbacks=callbacks,
-                  verbose=2)
+                  verbose=0)
         model.load_weights(checkpoint_path)
         return model
 
