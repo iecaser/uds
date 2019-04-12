@@ -21,8 +21,11 @@ from models import *
 from query_methods import *
 import pandas as pd
 import tensorflow as tf
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 from sklearn.externals import joblib
 import gc
+import time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 SEED = 12345
 HEAD = 20000
@@ -203,8 +206,8 @@ def evaluate_sample(training_function, X_train, Y_train, X_test, Y_test, checkpo
     Y_train = Y_train[perm]
 
     # create the validation set:
-    X_validation = X_train[:int(0.2*X_train.shape[0])]
-    Y_validation = Y_train[:int(0.2*Y_train.shape[0])]
+    X_validation = X_train[: int(0.2*X_train.shape[0])]
+    Y_validation = Y_train[: int(0.2*Y_train.shape[0])]
     X_train = X_train[int(0.2*X_train.shape[0]):]
     Y_train = Y_train[int(0.2*Y_train.shape[0]):]
 
@@ -397,6 +400,10 @@ if __name__ == '__main__':
         entropy_path = os.path.join(results_folder, '{alg}_{alg2}_{datatype}_{init}_{batch_size}_{idx}_entropy.pkl'.format(
             alg=args.method, alg2=args.method2, datatype=args.data_type, batch_size=args.batch_size, init=args.initial_size, idx=args.experiment_index
         ))
+    # by zxf
+    labeled_path = os.path.join(results_folder, '{alg}_{datatype}_{init}_{batch_size}_{idx}_labeled.pkl'.format(
+        alg=args.method, datatype=args.data_type, batch_size=args.batch_size, init=args.initial_size, idx=args.experiment_index
+    ))
 
     # run the experiment:
     accuracies = []
@@ -414,6 +421,7 @@ if __name__ == '__main__':
         # get the new indices from the algorithm
         old_labeled = np.copy(labeled_idx)
         labeled_idx = query_method.query(X_train, Y_train, labeled_idx, args.batch_size)
+        # unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
 
         # calculate and store the label entropy:
         new_idx = labeled_idx[np.logical_not(np.isin(labeled_idx, old_labeled))]
@@ -443,3 +451,6 @@ if __name__ == '__main__':
     with open(entropy_path, 'wb') as f:
         pickle.dump([entropies, label_distributions, queries], f)
         print("Saved entropy statistics to " + entropy_path)
+    with open(labeled_path, 'wb') as f:
+        pickle.dump([labeled_idx, args.initial_size, args.batch_size], f)
+        print("Saved labeled_idx to " + labeled_path)

@@ -24,11 +24,12 @@ def main(_):
     basepath = os.path.join('/home/zxf/workspace/DiscriminativeActiveLearning/', FLAGS.exp)
     methods = os.listdir(basepath)
     methods.remove(save_dir)
+    logger.info('plot exp/idx: {}/{}...'.format(FLAGS.exp, FLAGS.idx))
     valid_methods = []
     plt.rcParams['savefig.dpi'] = 300  # 图片像素
     plt.rcParams['figure.dpi'] = 300  # 分辨率
     for i, mp in enumerate(methods):
-        logger.info('method : {}'.format(mp))
+        logger.info('METHOD: {}'.format(mp))
         if FLAGS.idx == 999:
             filepath = glob.glob(os.path.join(
                 basepath, mp, 'results/*{}_{}_{}_[0-9]*.pkl'.format(FLAGS.dataset, FLAGS.init, FLAGS.batch)))
@@ -39,13 +40,15 @@ def main(_):
         for fp in filepath:
             if 'entropy' in fp:
                 continue
-            print(fp)
+            # print(fp)
             with open(fp, 'rb') as f:
                 accuracies, initial_size, batch_size = pickle.load(f)
             acc.append(accuracies)
         if len(acc) > 0:
             valid_methods.append(mp)
-            acc = np.array(acc).mean(axis=0)
+            acc = np.array(acc)
+            acc = acc.mean(axis=0)
+            # acc = np.median(acc, axis=0)
             plt.plot(acc, MARKERS[i], linewidth=1, markersize=2.5)
     plt.legend(valid_methods)
     plt.savefig('{}/{}/{}_{}_{}_{}.png'.format(FLAGS.exp, save_dir,
