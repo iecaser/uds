@@ -40,6 +40,8 @@ def main(_):
         for fp in filepath:
             if 'entropy' in fp:
                 continue
+            if 'label' in fp:
+                continue
             # print(fp)
             with open(fp, 'rb') as f:
                 accuracies, initial_size, batch_size = pickle.load(f)

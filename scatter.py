@@ -16,7 +16,7 @@ flags.DEFINE_string('dir', None, 'method')
 # iris = datasets.load_iris()
 # x = iris.data
 # y = iris.target
-SEED = 12345
+SEED = 1234
 
 
 def get_unlabeled_idx(X_train, labeled_idx):
@@ -40,6 +40,7 @@ def load_iris():
 def main(_):
     filedir = f'{FLAGS.dir}/results'
     (x, y), (_, __) = load_iris()
+    logger.info(f'scatter {filedir}')
     for filename in os.listdir(filedir):
         if 'labeled.pkl' in filename:
             filepath = os.path.join(filedir, filename)
@@ -59,7 +60,7 @@ def main(_):
 
                 plt.figure(batch)
                 plt.scatter(x[unlabeled_idx, 0], x[unlabeled_idx, 1],
-                            color='gray', marker='x', alpha=0.1)
+                            color='gray', marker='x', alpha=0.2)
                 plt.scatter(x[old_labeled, 0], x[old_labeled, 1], color='r', facecolors='none')
                 plt.scatter(x[new_idx, 0], x[new_idx, 1], color='r', alpha=0.5)
                 # for i, idx in enumerate(new_idx):

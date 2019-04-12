@@ -11,14 +11,14 @@ mkdir $exp $exp/results
 for idx in {0..500}
     do
     for method in Random\
-                    Adversarial\
                     CoreSet\
-                    UncertaintyDensity\
                     DualDensity\
+                    UncertaintyDensity\
                     UncertaintyDualDensity\
                     DynamicUncertaintyDualDensity\
                     EGL\
-                    # Uncertainty\
+                    Adversarial\
+                    Uncertainty\
                     # UncertaintyDistance\
                     # AntiUncertaintyDualDensity\
                     # UncertaintyEntropy\
@@ -31,11 +31,11 @@ for idx in {0..500}
         echo "------- $method $idx -------"
         python3 main.py $idx $dataset $batch_size $initial_size $iterations $method\
                 "/home/zxf/workspace/DiscriminativeActiveLearning/$mexp/" --visible $visible
+        # python3 scatter.py --dir $mexp
     done
 
     echo "------ ploting ...."
     python3 plot.py --idx $idx --exp $exp --dataset $dataset --init $initial_size --batch $batch_size
     python3 plot.py --exp $exp --dataset $dataset --init $initial_size --batch $batch_size
     mv $exp/results/${smooth}.png $exp/results/${smooth}.$idx.png
-    python3 scatter.py --dir $mexp
 done

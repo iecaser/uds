@@ -27,7 +27,7 @@ from sklearn.externals import joblib
 import gc
 import time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-SEED = 12345
+SEED = 1234
 HEAD = 20000
 
 

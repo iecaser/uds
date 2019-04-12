@@ -175,9 +175,11 @@ class DualDensityBase(QueryMethod):
         uct_l = self.get_uncertainty(X_labeled)
         uct_u = self.get_uncertainty(X_unlabeled)
         L, U = self.get_embedding(X_labeled=X_labeled, X_unlabeled=X_unlabeled)
+        # pca = PCA(n_components=2)
+        # x = pca.fit_transform(X_train)
+        # L, U = x[labeled_idx, :], x[unlabeled_idx, :]
         # distance & similarity
         logger.info('cal LU distance...')
-        # LU = cosine_distances(L, U)
         LU = 1.0 - cosine_similarity(L, U)
         LU = np.clip(LU, MIN_DISTANCE, MAX_DISTANCE)
         logger.info('cal UU similarity(+1)...')
@@ -744,6 +746,8 @@ class CoreSetSampling(QueryMethod):
         representation_model = Model(inputs=self.model.input,
                                      outputs=self.model.get_layer('coding').output)
         representation = representation_model.predict(X_train, verbose=0)
+        # pca = PCA(n_components=2)
+        # representation = pca.fit_transform(X_train)
         new_indices = self.greedy_k_center(
             representation[labeled_idx, :], representation[unlabeled_idx, :], amount)
         return np.hstack((labeled_idx, unlabeled_idx[new_indices]))
