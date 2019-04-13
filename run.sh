@@ -10,15 +10,18 @@ smooth=${dataset}_${initial_size}_${batch_size}_999
 mkdir $exp $exp/results
 for idx in {0..500}
     do
-    for method in Random\
-                    CoreSet\
-                    DualDensity\
-                    UncertaintyDensity\
-                    UncertaintyDualDensity\
-                    DynamicUncertaintyDualDensity\
-                    EGL\
-                    Adversarial\
-                    Uncertainty\
+    for method in\
+                    DualDensityBeam2\
+                    DualDensityBeam4\
+                    # Random\
+                    # DualDensity\
+                    # CoreSet\
+                    # UncertaintyDensity\
+                    # EGL\
+                    # Uncertainty\
+                    # Adversarial\
+                    # UncertaintyDualDensity\
+                    # DynamicUncertaintyDualDensity\
                     # UncertaintyDistance\
                     # AntiUncertaintyDualDensity\
                     # UncertaintyEntropy\

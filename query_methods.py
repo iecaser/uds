@@ -228,6 +228,99 @@ class DualDensityBase(QueryMethod):
         return labeled_idx
 
 
+class DualDensity(DualDensityBase):
+    """By zxf"""
+
+    def cal_score(self, distance_to_labeled, similarity_to_unlabeled,
+                  uncertainty_of_labeled, uncertainty_of_unlabeled):
+        assert distance_to_labeled.shape == similarity_to_unlabeled.shape
+        # score = distance_to_labeled * similarity_to_unlabeled
+        score = np.log(distance_to_labeled)\
+            + np.log(similarity_to_unlabeled)
+        return score
+
+
+class DualDensityBeam(DualDensity):
+    def beam_size(self):
+        return 1
+
+    def query(self, X_train, Y_train, labeled_idx, amount):
+        # params
+        MIN_DISTANCE, MIN_SIMILARITY, MAX_DISTANCE, MAX_SIMILARITY = 1e-15, 1e-15, 2, 2
+        MIN_SCORE = -np.inf
+        beam_size = self.beam_size()
+        n_classes = Y_train.shape[1]
+        logger.info('n_classes: {}'.format(n_classes))
+        l_neighbors, u_neighbors = self.l_neighbors, self.u_neighbors
+        unlabeled_idx = get_unlabeled_idx(X_train, labeled_idx)
+        X_labeled = X_train[labeled_idx, :]
+        X_unlabeled = X_train[unlabeled_idx, :]
+        # representation
+        uct_l = self.get_uncertainty(X_labeled)
+        uct_u = self.get_uncertainty(X_unlabeled)
+        L, U = self.get_embedding(X_labeled=X_labeled, X_unlabeled=X_unlabeled)
+        logger.info('cal LU distance...')
+        LU = 1.0 - cosine_similarity(L, U)
+        LU = np.clip(LU, MIN_DISTANCE, MAX_DISTANCE)
+        logger.info('cal UU similarity(+1)...')
+        UU = cosine_similarity(U) + 1.0
+        UU = np.clip(UU, MIN_SIMILARITY, MAX_SIMILARITY)
+        M, N = LU.shape[0], UU.shape[0]
+        selected_indices, scores = [], []
+        dis_l_init = self._init_dis(LU, l_neighbors)
+        sim_u_init = self._init_sim(UU, u_neighbors)
+        score = self.cal_score(distance_to_labeled=dis_l_init,
+                               similarity_to_unlabeled=sim_u_init,
+                               uncertainty_of_labeled=uct_l,
+                               uncertainty_of_unlabeled=uct_u)
+        sample_index = np.argmax(score)
+        seqs = [([sample_index], score[sample_index])]
+        for i in tqdm(range(amount)):
+            # sample
+            # logger.info('dis_l min/max:{}/{}'.format(dis_l.min(), dis_l.max()))
+            # logger.info('sim_u min/max:{}/{}'.format(sim_u.min(), sim_u.max()))
+            all_seqs = []
+            for seq in seqs:
+                seq_indices, seq_score = seq
+                sample_sims = UU[seq_indices, :]
+                sample_diss = MAX_SIMILARITY - sample_sims
+                dis_l = np.r_[dis_l_init.reshape(1, -1), sample_diss].min(axis=0)
+                sim_u = (sim_u_init * N - np.sum(sample_sims, axis=0)) / (N-len(seq))
+                score = self.cal_score(distance_to_labeled=dis_l,
+                                       similarity_to_unlabeled=sim_u,
+                                       uncertainty_of_labeled=uct_l,
+                                       uncertainty_of_unlabeled=uct_u)
+                score[seq_indices] = MIN_SCORE
+                sample_indices = np.argpartition(-score, beam_size+1)[:beam_size]
+                for j, sample_index in enumerate(sample_indices):
+                    sample_score = score[sample_index]
+                    new_score = seq_score + sample_score
+                    all_seqs.append((seq[0]+[sample_index], new_score))
+            all_seqs = sorted(all_seqs, key=lambda seq: seq[1], reverse=True)
+            seqs = all_seqs[:beam_size]
+            # seqs = [seq for seq, _ in all_seqs[:beam_size]]
+        selected_indices, final_seq_score = seqs[0]
+        logger.info('final seq score: {}'.format(final_seq_score))
+        assert len(selected_indices) == len(set(selected_indices))
+        labeled_idx = np.hstack((labeled_idx, unlabeled_idx[selected_indices]))
+        return labeled_idx
+
+
+class DualDensityBeam2(DualDensityBeam):
+    def beam_size(self):
+        return 2
+
+
+class DualDensityBeam3(DualDensityBeam):
+    def beam_size(self):
+        return 3
+
+
+class DualDensityBeam4(DualDensityBeam):
+    def beam_size(self):
+        return 4
+
+
 class UncertaintyDensity(DualDensityBase):
     """By zxf"""
 
@@ -277,18 +370,6 @@ class UncertaintyDistance(DualDensityBase):
         # score = uncertainty_of_unlabeled * distance_to_labeled
         score = np.log(distance_to_labeled)\
             + np.log(uncertainty_of_unlabeled)
-        return score
-
-
-class DualDensity(DualDensityBase):
-    """By zxf"""
-
-    def cal_score(self, distance_to_labeled, similarity_to_unlabeled,
-                  uncertainty_of_labeled, uncertainty_of_unlabeled):
-        assert distance_to_labeled.shape == similarity_to_unlabeled.shape
-        # score = distance_to_labeled * similarity_to_unlabeled
-        score = np.log(distance_to_labeled)\
-            + np.log(similarity_to_unlabeled)
         return score
 
 
