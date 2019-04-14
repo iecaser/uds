@@ -15,7 +15,7 @@ flags.DEFINE_string('dataset', 'mnist', 'Specified dataset')
 flags.DEFINE_integer('init', 100, 'initial size')
 flags.DEFINE_integer('batch', 100, 'batch size')
 
-MARKERS = ['+:', 'x-.', 'd--', 's-', '.:', '|-.', ',--', '1-', 'p:', '*-.', '^--', 'o-']
+MARKERS = ['+:', 'x-.', 'd--', 's-.', '.:', '|-.', ',--', '1-', 'p:', '*-.', '^--', 'o-']
 
 
 def get_outlier_mask(x, outlierConstant=0.5):
@@ -54,6 +54,8 @@ def main(_):
     plt.rcParams['savefig.dpi'] = 300  # 图片像素
     plt.rcParams['figure.dpi'] = 300  # 分辨率
     for i, mp in enumerate(methods):
+        if mp in ['Adversarial', 'DualDensityBeam4', 'EGL', 'UncertaintyDualDensity']:
+            continue
         logger.info('method : {}'.format(mp))
         if FLAGS.idx == 999:
             filepath = glob.glob(os.path.join(
@@ -65,14 +67,23 @@ def main(_):
         for fp in filepath:
             if 'entropy' in fp:
                 continue
+            if 'label' in fp:
+                continue
             # print(fp)
             with open(fp, 'rb') as f:
                 accuracies, initial_size, batch_size = pickle.load(f)
             acc.append(accuracies)
         if len(acc) > 0:
-            valid_methods.append(mp)
+            if mp == 'DualDensity':
+                valid_methods.append('DWDAL-1')
+            elif mp == 'DualDensityBeam2':
+                valid_methods.append('DWDAL-2')
+            elif mp == 'DualDensityBeam3':
+                valid_methods.append('DWDAL-3')
+            else:
+                valid_methods.append(mp)
             acc = np.array(acc)
-            mask = get_increase_mask(acc, c=-0.035)
+            mask = get_increase_mask(acc, c=-0.03)
             # mask = get_bias_mask(acc, bias=0.95, c=0.05)
             masked_acc = acc[mask]
             result = masked_acc.mean(axis=0)

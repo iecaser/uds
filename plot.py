@@ -16,7 +16,7 @@ flags.DEFINE_string('dataset', 'mnist', 'Specified dataset')
 flags.DEFINE_integer('init', 100, 'initial size')
 flags.DEFINE_integer('batch', 100, 'batch size')
 
-MARKERS = ['+:', 'x-.', 'd--', 's-', '.:', '|-.', ',--', '1-', 'p:', '*-.', '^--', 'o-']
+MARKERS = ['+:', 'x-.', 'd--', ',--',  '.:', '|-.', 's-.', '1-', 'p:', '*-.', '^--', 'o-']
 
 
 def main(_):
@@ -28,7 +28,12 @@ def main(_):
     valid_methods = []
     plt.rcParams['savefig.dpi'] = 300  # 图片像素
     plt.rcParams['figure.dpi'] = 300  # 分辨率
+    methods = ['Random', 'Uncertainty', 'UncertaintyDensity', 'CoreSet', 'EGL',
+               'DualDensity', 'DualDensityBeam2', 'DualDensityBeam3']
     for i, mp in enumerate(methods):
+        if mp in ['Adversarial', 'DualDensityBeam4',
+                  'UncertaintyDualDensity', 'DynamicUncertaintyDualDensity']:
+            continue
         logger.info('METHOD: {}'.format(mp))
         if FLAGS.idx == 999:
             filepath = glob.glob(os.path.join(
@@ -47,12 +52,23 @@ def main(_):
                 accuracies, initial_size, batch_size = pickle.load(f)
             acc.append(accuracies)
         if len(acc) > 0:
-            valid_methods.append(mp)
+            if mp == 'DualDensity':
+                valid_methods.append('DWDAL-1')
+            elif mp == 'DualDensityBeam2':
+                valid_methods.append('DWDAL-2')
+            elif mp == 'DualDensityBeam3':
+                valid_methods.append('DWDAL-3')
+            else:
+                valid_methods.append(mp)
             acc = np.array(acc)
             acc = acc.mean(axis=0)
             # acc = np.median(acc, axis=0)
-            plt.plot(acc, MARKERS[i], linewidth=1, markersize=2.5)
+            plt.plot(acc*100, MARKERS[i], linewidth=1, markersize=2.5)
     plt.legend(valid_methods)
+    dataset, init, batch = FLAGS.dataset, FLAGS.init, FLAGS.batch
+    plt.title(f'Dataset: {dataset.upper()}, Initial size: {init}, Batch size: {batch}')
+    plt.xlabel('Iterations')
+    plt.ylabel('Classification Accuray (%)')
     plt.savefig('{}/{}/{}_{}_{}_{}.png'.format(FLAGS.exp, save_dir,
                                                FLAGS.dataset, FLAGS.init,
                                                FLAGS.batch, FLAGS.idx))

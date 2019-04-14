@@ -16,8 +16,8 @@ for idx in {200..500}
                     DualDensity\
                     CoreSet\
                     UncertaintyDensity\
-                    EGL\
                     Uncertainty\
+                    # EGL\
                     # DualDensityBeam4\
                     # Adversarial\
                     # UncertaintyDualDensity\
