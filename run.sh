@@ -8,17 +8,17 @@ dataset=$5
 exp="${dataset}.${initial_size}.${batch_size}.${iterations}"
 smooth=${dataset}_${initial_size}_${batch_size}_999
 mkdir $exp $exp/results
-for idx in {0..500}
+for idx in {200..500}
     do
-    for method in\
+    for method in Random\
                     DualDensityBeam2\
-                    DualDensityBeam4\
-                    # Random\
-                    # DualDensity\
-                    # CoreSet\
-                    # UncertaintyDensity\
-                    # EGL\
-                    # Uncertainty\
+                    DualDensityBeam3\
+                    DualDensity\
+                    CoreSet\
+                    UncertaintyDensity\
+                    EGL\
+                    Uncertainty\
+                    # DualDensityBeam4\
                     # Adversarial\
                     # UncertaintyDualDensity\
                     # DynamicUncertaintyDualDensity\

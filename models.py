@@ -420,7 +420,8 @@ def train_cifar10_model(X_train, Y_train, X_validation, Y_validation, checkpoint
     else:
         input_shape = (3, 32, 32)
 
-    model = get_VGG_model(input_shape=input_shape, labels=10)
+    # model = get_VGG_model(input_shape=input_shape, labels=10)
+    model = get_LeNet_model(input_shape=input_shape, labels=10)
     optimizer = optimizers.Adam()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     callbacks = [DelayedModelCheckpoint(filepath=checkpoint_path, verbose=0, weights=True)]
