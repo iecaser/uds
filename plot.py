@@ -31,7 +31,7 @@ def main(_):
     methods = ['Random', 'Uncertainty', 'UncertaintyDensity', 'CoreSet', 'EGL',
                'DualDensity', 'DualDensityBeam2', 'DualDensityBeam3']
     for i, mp in enumerate(methods):
-        if mp in ['Adversarial', 'DualDensityBeam4',
+        if mp in ['Adversarial', 'DualDensityBeam4', 'EGL',
                   'UncertaintyDualDensity', 'DynamicUncertaintyDualDensity']:
             continue
         logger.info('METHOD: {}'.format(mp))
@@ -53,18 +53,22 @@ def main(_):
             acc.append(accuracies)
         if len(acc) > 0:
             if mp == 'DualDensity':
-                valid_methods.append('DWDAL-1')
+                valid_methods.append('DWDS-1')
             elif mp == 'DualDensityBeam2':
-                valid_methods.append('DWDAL-2')
+                valid_methods.append('DWDS-2')
             elif mp == 'DualDensityBeam3':
-                valid_methods.append('DWDAL-3')
+                valid_methods.append('DWDS-3')
+            elif mp == 'Uncertainty':
+                valid_methods.append('US')
+            elif mp == 'UncertaintyDensity':
+                valid_methods.append('DWUS')
             else:
                 valid_methods.append(mp)
             acc = np.array(acc)
             acc = acc.mean(axis=0)
             # acc = np.median(acc, axis=0)
             plt.plot(acc*100, MARKERS[i], linewidth=1, markersize=2.5)
-    plt.legend(valid_methods)
+    plt.legend(valid_methods, loc='lower right')
     dataset, init, batch = FLAGS.dataset, FLAGS.init, FLAGS.batch
     plt.title(f'Dataset: {dataset.upper()}, Initial size: {init}, Batch size: {batch}')
     plt.xlabel('Iterations')

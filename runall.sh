@@ -6,3 +6,4 @@ nohup ./run.sh 500 2000 3 "3" "mnist" > nohup.mnist.500.2000.3 2>&1 &
 # nohup ./run.sh 500 2000 5 "0" "cifar10" > nohup.cifar10.500.2000.5 2>&1 &
 # nohup ./run.sh 500 3000 3 "1" "cifar10" > nohup.cifar10.500.3000.3 2>&1 &
 # nohup ./run.sh 5 5 15 "3" "iris" > nohup.iris.5.5.15 2>&1 &
+# nohup ./run.sh 10 20 4 "3" "iris" > nohup.iris.10.20.4 2>&1 &
