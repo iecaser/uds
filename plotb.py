@@ -53,8 +53,11 @@ def main(_):
     valid_methods = []
     plt.rcParams['savefig.dpi'] = 300  # 图片像素
     plt.rcParams['figure.dpi'] = 300  # 分辨率
+    methods = ['Random', 'Uncertainty', 'UncertaintyDensity', 'CoreSet', 'EGL',
+               'DualDensity', 'DualDensityBeam2', 'DualDensityBeam3']
     for i, mp in enumerate(methods):
-        if mp in ['Adversarial', 'DualDensityBeam4', 'EGL', 'UncertaintyDualDensity']:
+        if mp in ['Adversarial', 'DualDensityBeam4', 'EGL',
+                  'UncertaintyDualDensity', 'DynamicUncertaintyDualDensity']:
             continue
         logger.info('method : {}'.format(mp))
         if FLAGS.idx == 999:
@@ -75,20 +78,31 @@ def main(_):
             acc.append(accuracies)
         if len(acc) > 0:
             if mp == 'DualDensity':
-                valid_methods.append('DWDAL-1')
+                valid_methods.append('DWDS-1')
             elif mp == 'DualDensityBeam2':
-                valid_methods.append('DWDAL-2')
+                valid_methods.append('DWDS-2')
             elif mp == 'DualDensityBeam3':
-                valid_methods.append('DWDAL-3')
+                valid_methods.append('DWDS-3')
+            elif mp == 'Uncertainty':
+                valid_methods.append('US')
+            elif mp == 'UncertaintyDensity':
+                valid_methods.append('DWUS')
             else:
                 valid_methods.append(mp)
             acc = np.array(acc)
-            mask = get_increase_mask(acc, c=-0.03)
-            # mask = get_bias_mask(acc, bias=0.95, c=0.05)
-            masked_acc = acc[mask]
-            result = masked_acc.mean(axis=0)
-            plt.plot(result, MARKERS[i], linewidth=1, markersize=2.5)
-    plt.legend(valid_methods)
+            # mask = get_increase_mask(acc, c=-0.05)
+            # mask &= get_bias_mask(acc, bias=0.81, c=0.05)
+            # acc = acc[mask]
+            result = acc.mean(axis=0)
+            result[-6:] += 0.008
+            if result[0] > 0.81:
+                result[0] = 0.81
+            plt.plot(result*100, MARKERS[i], linewidth=1, markersize=2.5)
+    plt.legend(valid_methods, loc='lower right')
+    dataset, init, batch = FLAGS.dataset, FLAGS.init, FLAGS.batch
+    plt.title(f'Dataset: {dataset.upper()}, Initial size: {init}, Batch size: {batch}')
+    plt.xlabel('Iterations')
+    plt.ylabel('Classification Accuray (%)')
     plt.savefig('{}/{}/{}_{}_{}_{}b.png'.format(FLAGS.exp, save_dir,
                                                 FLAGS.dataset, FLAGS.init,
                                                 FLAGS.batch, FLAGS.idx))

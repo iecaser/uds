@@ -28,7 +28,7 @@ import gc
 import time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 SEED = 1234
-HEAD = 20000
+HEAD = 3000
 
 
 def parse_input():
